@@ -36,9 +36,9 @@ typedef struct{
 
 	// Data for player 1
 	tString player1Name;
-	tDeck player1Deck;
-	unsigned int player1Stack;
-	unsigned int player1Bet;
+	tDeck player1Deck; //cartas en jugada
+	unsigned int player1Stack; //fichas totales
+	unsigned int player1Bet; //fichas en apuesta
 
 	// Data for player 2
 	tString player2Name;
@@ -47,7 +47,7 @@ typedef struct{
 	unsigned int player2Bet;
 
 	// Deck for the current game
-	tDeck gameDeck;
+	tDeck gameDeck; // mazo de cartas restantes
 }tSession;
 
 /** Players in one session */
@@ -106,4 +106,8 @@ unsigned int calculatePoints (tDeck *deck);
  * @return Randomly selected card from the game deck.
  */
 unsigned int getRandomCard (tDeck* deck);
+
+/** Crea el socket del cliente, recive el nombre y lo aniade a la session
+ */
+void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player);
  

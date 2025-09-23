@@ -59,18 +59,67 @@ int main(int argc, char *argv[]){
 	unsigned int code;					/** Code */
 
 
-		// Check arguments!
-		if (argc != 3){
-			fprintf(stderr,"ERROR wrong number of arguments\n");
-			fprintf(stderr,"Usage:\n$>%s serverIP port\n", argv[0]);
-			exit(0);
-		}
+	// Check arguments!
+	if (argc != 3){
+		fprintf(stderr,"ERROR wrong number of arguments\n");
+		fprintf(stderr,"Usage:\n$>%s serverIP port\n", argv[0]);
+		exit(0);
+	}
 
-		// Get the server address
-		serverIP = argv[1];
+	// Get the server address
+	serverIP = argv[1];
 
-		// Get the port
-		port = atoi(argv[2]);
+	// Get the port
+	port = atoi(argv[2]);
 
-		
+	// Create socket
+	socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	// Check if the socket has been successfully created
+	if (socketfd < 0)
+		showError("ERROR while creating the socket");
+	
+	// Fill server address structure
+	memset(&server_address, 0, sizeof(server_address));
+	server_address.sin_family = AF_INET;
+	server_address.sin_addr.s_addr = inet_addr(serverIP);
+	server_address.sin_port = htons(port);
+
+	// Connect with server
+	if (connect(socketfd, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
+		showError("ERROR while establishing connection");
+
+	// Init and read the message
+	printf("Enter your name: ");
+	memset(playerName, 0, STRING_LENGTH);
+	fgets(playerName, STRING_LENGTH-1, stdin);
+
+
+	// Send message to the server side
+	int byteLength = send(socketfd, strlen(playerName), sizeof(int), 0);
+	// Check the number of bytes sent
+	if (byteLength < 0) {
+		showError("ERROR while writing to the socket");
+	}
+
+	// Send message to the server side
+	int nameLength = send(socketfd, playerName, strlen(playerName), 0);
+
+	// Check the number of bytes sent
+	if (nameLength < 0)
+		showError("ERROR while writing to the socket");
+
+	// Init for reading incoming message
+	memset(playerName, 0, STRING_LENGTH);
+	nameLength = recv(socketfd, playerName, STRING_LENGTH-1, 0);
+
+	// Check bytes read
+	if (nameLength < 0)
+		showError("ERROR while reading from the socket");
+
+	// Show the returned message
+	printf("%s\n",playerName);
+
+	// Close socket
+	close(socketfd);
 }

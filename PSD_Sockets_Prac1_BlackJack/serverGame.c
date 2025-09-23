@@ -115,7 +115,7 @@ int main(int argc, char *argv[]){
 	unsigned int clientLength;			/** Length of client structure */
 	tThreadArgs *threadArgs; 			/** Thread parameters */
 	pthread_t threadID;					/** Thread ID */
-
+	tSession session; 					/** Session de la partida */
 
 		// Seed
 		srand(time(0));
@@ -156,18 +156,17 @@ int main(int argc, char *argv[]){
 	// Get length of client structure
 	clientLength = sizeof(player1Address);
 
-	for(int i = 0; i < 2; i++) {
-		createClient();
-	}
+	createClient(socketfd, clientLength, player1Address, socketPlayer1, session, 0);
+	createClient(socketfd, clientLength, player2Address, socketPlayer2, session, 1);
 	
-
 	// Close sockets
-	close(newsockfd);
+	close(socketPlayer1);
+	close(socketPlayer2);
 	close(socketfd);
 }
-//TODO pasar por referencia
+
 //TODO guardarnos los datos del cliente para luego crear la partida con los datos de ambos
-void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer) {
+void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player) {
 	// Accept!
 	socketPlayer = accept(socketfd, (struct sockaddr *) &playerAddress, &clientLength);
 
@@ -178,16 +177,30 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 	// Init and read message
 	tString message;
 
+	int bytes;
+
+	int bytesLength = recv(socketPlayer, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
+	// Check read bytes
+	if (bytesLength < 0)
+		showError("ERROR while reading name length");
 
 	memset(message, 0, STRING_LENGTH);
-	int messageLength = recv(socketPlayer, message, STRING_LENGTH-1, 0);
+	int messageLength = recv(socketPlayer, message, bytes, 0); //recibimos el nombre
 
 	// Check read bytes
 	if (messageLength < 0)
 		showError("ERROR while reading from socket");
 
 	// Show message
-	printf("Message: %s\n", message);
+	printf("Name: %s\n", message);
+
+	// Guardar en session
+	if (player) {
+		strcpy(session.player2Name, message);
+	}
+	else {
+		strcpy(session.player1Name, message);
+	}
 
 	// Get the message length
 	memset (message, 0, STRING_LENGTH);
