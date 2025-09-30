@@ -101,7 +101,39 @@ unsigned int getRandomCard (tDeck* deck){
 	return card;
 }
 
+void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player) {
+	// Accept!
+	socketPlayer = accept(socketfd, (struct sockaddr *) &playerAddress, &clientLength);
 
+	// Check accept result
+	if (socketPlayer < 0)
+		showError("ERROR while accepting");	  
+
+	// Init and read message
+	tString message;
+
+	receiveMessage(message, socketPlayer);
+
+	// Show message
+	printf("Name player %i: %s\n", player, message);
+
+	// Guardar en session
+	if (player == 2) {
+		strcpy(session.player2Name, message);
+	}
+	else {
+		strcpy(session.player1Name, message);
+	}
+
+	// Get the message length
+	memset (message, 0, STRING_LENGTH);
+	strcpy (message, "Name received!");
+	int messageLength = send(socketPlayer, message, strlen(message), 0);
+
+	// Check bytes sent
+	if (messageLength < 0)
+		showError("ERROR while writing to socket");
+}
 
 int main(int argc, char *argv[]){
 
@@ -156,58 +188,19 @@ int main(int argc, char *argv[]){
 	// Get length of client structure
 	clientLength = sizeof(player1Address);
 
-	createClient(socketfd, clientLength, player1Address, socketPlayer1, session, 0);
-	createClient(socketfd, clientLength, player2Address, socketPlayer2, session, 1);
+	// Creamos a los clientes (Se piden los nombres)
+	createClient(socketfd, clientLength, player1Address, socketPlayer1, session, 1);
+	createClient(socketfd, clientLength, player2Address, socketPlayer2, session, 2);
+
+	initSession(&session);
+
+	while (2) {
+		sendCode(TURN_BET, socketfd);
+		sendCode(session.player1Stack, socketfd);
+	}
 	
 	// Close sockets
 	close(socketPlayer1);
 	close(socketPlayer2);
 	close(socketfd);
-}
-
-//TODO guardarnos los datos del cliente para luego crear la partida con los datos de ambos
-void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player) {
-	// Accept!
-	socketPlayer = accept(socketfd, (struct sockaddr *) &playerAddress, &clientLength);
-
-	// Check accept result
-	if (socketPlayer < 0)
-		showError("ERROR while accepting");	  
-
-	// Init and read message
-	tString message;
-
-	int bytes;
-
-	int bytesLength = recv(socketPlayer, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
-	// Check read bytes
-	if (bytesLength < 0)
-		showError("ERROR while reading name length");
-
-	memset(message, 0, STRING_LENGTH);
-	int messageLength = recv(socketPlayer, message, bytes, 0); //recibimos el nombre
-
-	// Check read bytes
-	if (messageLength < 0)
-		showError("ERROR while reading from socket");
-
-	// Show message
-	printf("Name: %s\n", message);
-
-	// Guardar en session
-	if (player) {
-		strcpy(session.player2Name, message);
-	}
-	else {
-		strcpy(session.player1Name, message);
-	}
-
-	// Get the message length
-	memset (message, 0, STRING_LENGTH);
-	strcpy (message, "Name received!");
-	messageLength = send(socketPlayer, message, strlen(message), 0);
-
-	// Check bytes sent
-	if (messageLength < 0)
-		showError("ERROR while writing to socket");
 }

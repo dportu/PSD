@@ -96,18 +96,18 @@ int main(int argc, char *argv[]){
 
 
 	// Send message to the server side
-	int byteLength = send(socketfd, strlen(playerName), sizeof(int), 0);
+	int nameLen = strlen(playerName);
+	int byteLength = send(socketfd, &nameLen, sizeof(int), 0);
 	// Check the number of bytes sent
 	if (byteLength < 0) {
-		showError("ERROR while writing to the socket");
+		showError("ERROR while writing to the socket 1");
 	}
 
 	// Send message to the server side
 	int nameLength = send(socketfd, playerName, strlen(playerName), 0);
-
 	// Check the number of bytes sent
 	if (nameLength < 0)
-		showError("ERROR while writing to the socket");
+		showError("ERROR while writing to the socket 2");
 
 	// Init for reading incoming message
 	memset(playerName, 0, STRING_LENGTH);
@@ -119,6 +119,12 @@ int main(int argc, char *argv[]){
 
 	// Show the returned message
 	printf("%s\n",playerName);
+
+	receiveCode(code, socketfd);
+	printf("%i ", code);
+	receiveCode(code, socketfd);
+	printf("%i ", code);
+
 
 	// Close socket
 	close(socketfd);

@@ -121,3 +121,6 @@ void printFancyDeck (tDeck* deck);
  * @return Minimun value of the two given numbers.
  */
 unsigned int min (unsigned int a, unsigned int b);
+
+void sendMessage(tString *message, int socketfd);
+void receiveMessage(tString *message, int socketC);

@@ -166,3 +166,67 @@ void printFancyDeck (tDeck* deck){
 unsigned int min (unsigned int a, unsigned int b){
 	return (a<b?a:b);
 }
+
+void sendCode(int code, int socketfd) {
+	// Send message to the server side
+	int byteLength = send(socketfd, &code, sizeof(int), 0);
+	// Check the number of bytes sent
+	if (byteLength < 0) {
+		showError("ERROR while writing to the socket 1");
+	}
+
+	// Send message to the server side
+	int nameLength = send(socketfd, code, strlen(code), 0);
+	// Check the number of bytes sent
+	if (nameLength < 0)
+		showError("ERROR while writing to the socket 2");
+}
+
+void receiveCode(unsigned int code, int socketC) {
+	int bytes;
+
+	int bytesLength = recv(socketC, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
+	// Check read bytes
+	if (bytesLength < 0)
+		showError("ERROR while reading name length");
+
+	int messageLength = recv(socketC, code, bytes, 0); //recibimos el nombre
+
+	// Check read bytes
+	if (messageLength < 0)
+		showError("ERROR while reading from socket");
+
+}
+
+void sendMessage(tString *message, int socketfd) {
+	// Send message to the server side
+	int nameLen = strlen(message);
+	int byteLength = send(socketfd, &nameLen, sizeof(int), 0);
+	// Check the number of bytes sent
+	if (byteLength < 0) {
+		showError("ERROR while writing to the socket 1");
+	}
+
+	// Send message to the server side
+	int nameLength = send(socketfd, message, strlen(message), 0);
+	// Check the number of bytes sent
+	if (nameLength < 0)
+		showError("ERROR while writing to the socket 2");
+}
+
+void receiveMessage(tString *message, int socketC) {
+	int bytes;
+
+	int bytesLength = recv(socketC, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
+	// Check read bytes
+	if (bytesLength < 0)
+		showError("ERROR while reading name length");
+
+	memset(message, 0, STRING_LENGTH);
+	int messageLength = recv(socketC, message, bytes, 0); //recibimos el nombre
+
+	// Check read bytes
+	if (messageLength < 0)
+		showError("ERROR while reading from socket");
+
+}
