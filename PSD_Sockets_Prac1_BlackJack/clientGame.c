@@ -56,8 +56,8 @@ int main(int argc, char *argv[]){
 	char* serverIP;						/** Server IP */
 	unsigned int endOfGame;				/** Flag to control the end of the game */
 	tString playerName;					/** Name of the player */
-	unsigned int code;					/** Code */
-
+	//unsigned int code;					/** Code */
+	int activePlayer = 0;
 
 	// Check arguments!
 	if (argc != 3){
@@ -100,30 +100,44 @@ int main(int argc, char *argv[]){
 	int byteLength = send(socketfd, &nameLen, sizeof(int), 0);
 	// Check the number of bytes sent
 	if (byteLength < 0) {
-		showError("ERROR while writing to the socket 1");
+		showError("ERROR while sending size of name");
 	}
 
 	// Send message to the server side
 	int nameLength = send(socketfd, playerName, strlen(playerName), 0);
 	// Check the number of bytes sent
 	if (nameLength < 0)
-		showError("ERROR while writing to the socket 2");
+		showError("ERROR while name");
 
 	// Init for reading incoming message
-	memset(playerName, 0, STRING_LENGTH);
-	nameLength = recv(socketfd, playerName, STRING_LENGTH-1, 0);
+	tString m;
+	memset(m, 0, STRING_LENGTH);
+	nameLength = recv(socketfd, m, STRING_LENGTH-1, 0);
 
 	// Check bytes read
 	if (nameLength < 0)
 		showError("ERROR while reading from the socket");
 
 	// Show the returned message
-	printf("%s\n",playerName);
+	printf("%s\n",m);
 
-	receiveCode(code, socketfd);
-	printf("%i ", code);
-	receiveCode(code, socketfd);
-	printf("%i ", code);
+	//unsigned int c = 0;
+	activePlayer = receiveCode(socketfd);
+	/*if(c != 0) {
+		activePlayer = 1;
+	}*/
+	printf("%d\n", activePlayer);
+	if(activePlayer == 100) {
+		printf("Active Player\n");
+		unsigned int code = 0;
+		unsigned int stack = 0;
+		//memset(code, 0, sizeof(code));
+		code = receiveCode(socketfd);
+		printf("%i ", code);
+	}
+	else if(activePlayer == 101) {
+		printf("Inactive player\n");
+	}
 
 
 	// Close socket

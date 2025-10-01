@@ -167,35 +167,44 @@ unsigned int min (unsigned int a, unsigned int b){
 	return (a<b?a:b);
 }
 
-void sendCode(int code, int socketfd) {
-	// Send message to the server side
-	int byteLength = send(socketfd, &code, sizeof(int), 0);
+void sendCode(unsigned int code, int socketfd) {
+	
+	/*// Send message to the server side
+	int bytes = sizeof(code);
+	int byteLength = send(socketfd, &bytes, sizeof(int), 0);
 	// Check the number of bytes sent
 	if (byteLength < 0) {
-		showError("ERROR while writing to the socket 1");
-	}
+		showError("ERROR while sending size of code");
+	}*/
 
+	unsigned int c = code;
 	// Send message to the server side
-	int nameLength = send(socketfd, code, strlen(code), 0);
+	int bytes = send(socketfd, &c, sizeof(int), 0);
 	// Check the number of bytes sent
-	if (nameLength < 0)
-		showError("ERROR while writing to the socket 2");
+	if (bytes < 0) {
+		showError("ERROR while sending code");
+	}
 }
 
-void receiveCode(unsigned int code, int socketC) {
-	int bytes;
+int receiveCode(int socketC) {
+	/*int bytes;
 
-	int bytesLength = recv(socketC, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
+	int bytesLength = recv(socketC, &bytes, sizeof(int), 0); 
 	// Check read bytes
 	if (bytesLength < 0)
 		showError("ERROR while reading name length");
+*/
 
-	int messageLength = recv(socketC, code, bytes, 0); //recibimos el nombre
+
+	unsigned int code = 0;
+	int messageLength = recv(socketC, &code, sizeof(int), 0); 
 
 	// Check read bytes
-	if (messageLength < 0)
+	if (messageLength < 0) {
 		showError("ERROR while reading from socket");
-
+	}
+		
+	return code;
 }
 
 void sendMessage(tString *message, int socketfd) {

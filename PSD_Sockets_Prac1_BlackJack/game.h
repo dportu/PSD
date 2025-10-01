@@ -10,6 +10,9 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
  
+// ACTIVE PLAYER
+#define ACTIVE_PLAYER 100
+#define INACTIVE_PLAYER 101
 
 /** Player stands */
 #define TURN_PLAY_STAND 0
@@ -124,3 +127,6 @@ unsigned int min (unsigned int a, unsigned int b);
 
 void sendMessage(tString *message, int socketfd);
 void receiveMessage(tString *message, int socketC);
+
+void sendCode(unsigned int code, int socketfd);
+int receiveCode(int socketC);

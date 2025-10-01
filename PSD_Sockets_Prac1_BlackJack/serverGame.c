@@ -101,10 +101,7 @@ unsigned int getRandomCard (tDeck* deck){
 	return card;
 }
 
-void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player) {
-	// Accept!
-	socketPlayer = accept(socketfd, (struct sockaddr *) &playerAddress, &clientLength);
-
+void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession *session, int player) {
 	// Check accept result
 	if (socketPlayer < 0)
 		showError("ERROR while accepting");	  
@@ -119,10 +116,10 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 
 	// Guardar en session
 	if (player == 2) {
-		strcpy(session.player2Name, message);
+		strcpy(session->player2Name, message);
 	}
 	else {
-		strcpy(session.player1Name, message);
+		strcpy(session->player1Name, message);
 	}
 
 	// Get the message length
@@ -134,6 +131,18 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 	if (messageLength < 0)
 		showError("ERROR while writing to socket");
 }
+
+void setActivePlayer(int player, int socket1, int socket2) {
+	if(player == 1) {
+		sendCode(ACTIVE_PLAYER, socket1);
+		sendCode(INACTIVE_PLAYER, socket2);
+	}
+	else {
+		sendCode(ACTIVE_PLAYER, socket2);
+		sendCode(INACTIVE_PLAYER, socket1);
+	}
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -148,6 +157,7 @@ int main(int argc, char *argv[]){
 	tThreadArgs *threadArgs; 			/** Thread parameters */
 	pthread_t threadID;					/** Thread ID */
 	tSession session; 					/** Session de la partida */
+	int activePlayer;
 
 		// Seed
 		srand(time(0));
@@ -188,14 +198,22 @@ int main(int argc, char *argv[]){
 	// Get length of client structure
 	clientLength = sizeof(player1Address);
 
+	// Accept!
+	socketPlayer1 = accept(socketfd, (struct sockaddr *) &player1Address, &clientLength);
+	socketPlayer2 = accept(socketfd, (struct sockaddr *) &player2Address, &clientLength);
+	
+
 	// Creamos a los clientes (Se piden los nombres)
-	createClient(socketfd, clientLength, player1Address, socketPlayer1, session, 1);
-	createClient(socketfd, clientLength, player2Address, socketPlayer2, session, 2);
+	createClient(socketfd, clientLength, player1Address, socketPlayer1, &session, 1);
+	createClient(socketfd, clientLength, player2Address, socketPlayer2, &session, 2);
 
 	initSession(&session);
 
-	while (2) {
-		sendCode(TURN_BET, socketfd);
+	setActivePlayer(1, socketPlayer1, socketPlayer2);
+	
+	while (1) {
+		
+		sendCode(TURN_BET, socketPlayer1);
 		sendCode(session.player1Stack, socketfd);
 	}
 	

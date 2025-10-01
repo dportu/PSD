@@ -109,5 +109,5 @@ unsigned int getRandomCard (tDeck* deck);
 
 /** Crea el socket del cliente, recive el nombre y lo aniade a la session
  */
-void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession session, int player);
+void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession *session, int player);
  
