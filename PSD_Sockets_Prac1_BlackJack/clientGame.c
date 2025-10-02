@@ -130,8 +130,7 @@ int main(int argc, char *argv[]){
 	if(activePlayer == 100) {
 		printf("Active Player\n");
 		unsigned int code = 0;
-		unsigned int stack = 0;
-		//memset(code, 0, sizeof(code));
+		// unsigned int stack = 0;
 		code = receiveCode(socketfd);
 		printf("%i ", code);
 	}

@@ -125,8 +125,8 @@ void printFancyDeck (tDeck* deck);
  */
 unsigned int min (unsigned int a, unsigned int b);
 
-void sendMessage(tString *message, int socketfd);
-void receiveMessage(tString *message, int socketC);
+void sendMessage(tString message, int socketfd);
+void receiveMessage(tString message, int socketC);
 
 void sendCode(unsigned int code, int socketfd);
 int receiveCode(int socketC);

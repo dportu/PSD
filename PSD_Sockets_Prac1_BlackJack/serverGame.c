@@ -210,6 +210,8 @@ int main(int argc, char *argv[]){
 	initSession(&session);
 
 	setActivePlayer(1, socketPlayer1, socketPlayer2);
+
+	// ToDo: Hacer que empiece el jugador A, y vaya cambiandose en cada turno
 	
 	while (1) {
 		

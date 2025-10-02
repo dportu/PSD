@@ -207,7 +207,7 @@ int receiveCode(int socketC) {
 	return code;
 }
 
-void sendMessage(tString *message, int socketfd) {
+void sendMessage(tString message, int socketfd) {
 	// Send message to the server side
 	int nameLen = strlen(message);
 	int byteLength = send(socketfd, &nameLen, sizeof(int), 0);
@@ -223,7 +223,7 @@ void sendMessage(tString *message, int socketfd) {
 		showError("ERROR while writing to the socket 2");
 }
 
-void receiveMessage(tString *message, int socketC) {
+void receiveMessage(tString message, int socketC) {
 	int bytes;
 
 	int bytesLength = recv(socketC, &bytes, sizeof(int), 0); //recibimos la longitud en bytes del nombre del cliente
