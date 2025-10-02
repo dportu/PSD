@@ -110,4 +110,5 @@ unsigned int getRandomCard (tDeck* deck);
 /** Crea el socket del cliente, recive el nombre y lo aniade a la session
  */
 void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession *session, int player);
- 
+int activePLayerStack(tSession session, tPlayer activePlayer); //devuelve el stack del jugador activo
+void switchActivePlayer(tPlayer *activePLayer, int *activePlayer, int socket1, int socket2); //cambia el jugador activo

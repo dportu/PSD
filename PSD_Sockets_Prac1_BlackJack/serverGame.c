@@ -108,7 +108,6 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 
 	// Init and read message
 	tString message;
-
 	receiveMessage(message, socketPlayer);
 
 	// Show message
@@ -125,24 +124,49 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 	// Get the message length
 	memset (message, 0, STRING_LENGTH);
 	strcpy (message, "Name received!");
-	int messageLength = send(socketPlayer, message, strlen(message), 0);
+	sendMessage(message, socketPlayer);
 
-	// Check bytes sent
-	if (messageLength < 0)
-		showError("ERROR while writing to socket");
 }
 
-void setActivePlayer(int player, int socket1, int socket2) {
-	if(player == 1) {
-		sendCode(ACTIVE_PLAYER, socket1);
-		sendCode(INACTIVE_PLAYER, socket2);
+void switchActivePlayer(tPlayer *activePlayer, int *activePlayerSocket, int socket1, int socket2) {
+	if(*activePlayerSocket == socket1) {
+		*activePlayerSocket = socket2;
+		*activePlayer = player2;
 	}
 	else {
-		sendCode(ACTIVE_PLAYER, socket2);
-		sendCode(INACTIVE_PLAYER, socket1);
+		*activePlayerSocket = socket1;
+		*activePlayer = player1;
 	}
 }
 
+int activePLayerStack(tSession session, tPlayer activePlayer) {
+	if(activePlayer)  {
+		return session.player2Stack;
+	}
+	else{
+		return session.player1Stack;
+	}
+}
+
+void rondaDeApuestas(int activePlayer, int activePlayerSocket, tSession session, int socketPlayer1, int socketPlayer2) {
+	
+	for(int i =0;i<2;i++) {
+		sendCode(TURN_BET, activePlayerSocket);
+		int stack = activePLayerStack(session, activePlayer);
+		sendCode(session.player1Stack, activePlayerSocket); // TODO: añadir una funcion que devuelva la session del activePlayer
+
+		int bet = receiveCode(activePlayerSocket);
+		while(bet > session.player1Stack) {
+			sendCode(TURN_BET, activePlayerSocket);
+			bet = receiveCode(activePlayerSocket);
+		}
+		sendCode(TURN_BET_OK, activePlayerSocket);
+		session.player1Bet = bet;
+
+		switchActivePlayer(&activePlayer, &activePlayerSocket, socketPlayer1, socketPlayer2);
+	}
+
+}
 
 int main(int argc, char *argv[]){
 
@@ -157,7 +181,8 @@ int main(int argc, char *argv[]){
 	tThreadArgs *threadArgs; 			/** Thread parameters */
 	pthread_t threadID;					/** Thread ID */
 	tSession session; 					/** Session de la partida */
-	int activePlayer;
+	int activePlayerSocket;
+	tPlayer activePlayer;
 
 		// Seed
 		srand(time(0));
@@ -209,18 +234,15 @@ int main(int argc, char *argv[]){
 
 	initSession(&session);
 
-	setActivePlayer(1, socketPlayer1, socketPlayer2);
-
-	// ToDo: Hacer que empiece el jugador A, y vaya cambiandose en cada turno
+	activePlayerSocket = socketPlayer1;
+	activePlayer = player1;
 	
-	while (1) {
-		
-		sendCode(TURN_BET, socketPlayer1);
-		sendCode(session.player1Stack, socketfd);
-	}
+	rondaDeApuestas(activePlayer, activePlayerSocket, session, socketPlayer1, socketPlayer2);
 	
 	// Close sockets
 	close(socketPlayer1);
 	close(socketPlayer2);
 	close(socketfd);
 }
+
+

@@ -217,7 +217,7 @@ void sendMessage(tString message, int socketfd) {
 	}
 
 	// Send message to the server side
-	int nameLength = send(socketfd, message, strlen(message), 0);
+	int nameLength = send(socketfd, message, nameLen, 0);
 	// Check the number of bytes sent
 	if (nameLength < 0)
 		showError("ERROR while writing to the socket 2");
