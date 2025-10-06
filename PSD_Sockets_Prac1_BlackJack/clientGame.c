@@ -12,7 +12,7 @@ unsigned int readBet (){
 			bzero (enteredMove, STRING_LENGTH);
 			isValid = TRUE;
 
-			printf ("Enter a value:");
+			printf ("Enter a value: ");
 			fgets(enteredMove, STRING_LENGTH-1, stdin);
 			enteredMove[strlen(enteredMove)-1] = 0;
 
@@ -52,7 +52,7 @@ void rondaDeApuestas(int socketfd) {
 	int code = receiveCode(socketfd);
 	if (code == TURN_BET) {
 		unsigned int stack = receiveCode(socketfd);
-		printf("Stack: %i\n", stack);
+		printf("Stack disponible: %i\n", stack);
 		unsigned int bet;
 
 		do {
@@ -71,23 +71,24 @@ void rondaDeApuestas(int socketfd) {
 unsigned int jugarRonda(int socketfd) {
 	unsigned int receivedCode = receiveCode(socketfd);
 	unsigned int active = (receivedCode == TURN_PLAY);
-	printf("Received code: %i\n", receivedCode);
+	showCode(receivedCode);
 	unsigned int canPlay = TRUE;
 	
 	unsigned int points = receiveCode(socketfd);
 	printf("Points: %i\n", points);
 	tDeck activePlayerDeck;
 	receiveDeck(&activePlayerDeck, socketfd);
-	printf("Deck received");
+	printFancyDeck(&activePlayerDeck);
+
 	if(active) {
-		
 		unsigned int play = readOption(); //preparamos la primera play
-		printf("play: %i\n", play);
+		printf("Play: %i\n", play);
 		sendCode(play, socketfd); //enviamos la primera play
 
 		while(play == TURN_PLAY_HIT && canPlay) {
 			canPlay = (receiveCode(socketfd) == TURN_PLAY);
 			points = receiveCode(socketfd);
+			printf("Points: %u\n", points);
 			receiveDeck(&activePlayerDeck, socketfd);
 
 			if(active && canPlay) {
@@ -165,8 +166,6 @@ int main(int argc, char *argv[]){
 
 	// Show the returned message
 	printf("%s\n",m);
-
-
 	
 	while (!endOfGame) {
 		rondaDeApuestas(socketfd);

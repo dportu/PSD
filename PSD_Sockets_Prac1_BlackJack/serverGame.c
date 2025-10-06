@@ -129,8 +129,9 @@ void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in pl
 }
 
 void switchActivePlayer(tPlayer *activePlayer, int *activePlayerSocket, tPlayer *inactivePlayer, int *inactivePlayerSocket, int socket1, int socket2) {
-	printf("active player before switch: player%i\n", *activePlayer);
-	printf("inactive player before switch: player%i\n", *inactivePlayer);
+	printf("\n--- SWITCH ACTIVE PLAYER ---\n");
+	printf("Active player before switch: player%i\n", *activePlayer);
+	// printf("inactive player before switch: player%i\n", *inactivePlayer);
 	if(*activePlayerSocket == socket1) {
 		*activePlayerSocket = socket2;
 		*activePlayer = player2;
@@ -143,8 +144,8 @@ void switchActivePlayer(tPlayer *activePlayer, int *activePlayerSocket, tPlayer 
 		*inactivePlayerSocket = socket2;
 		*inactivePlayer = player2;
 	}
-	printf("active player after switch: player%i\n", *activePlayer);
-	printf("inactive player before switch: player%i\n", *inactivePlayer);
+	printf("Active player after switch: player%i\n", *activePlayer);
+	// printf("inactive player before switch: player%i\n", *inactivePlayer);
 }
 
 int activePLayerStack(tSession session, tPlayer activePlayer) {
@@ -157,19 +158,25 @@ int activePLayerStack(tSession session, tPlayer activePlayer) {
 }
 
 void rondaDeApuestas(tPlayer *activePlayer, int *activePlayerSocket, tPlayer *inactivePlayer, int *inactivePlayerSocket, tSession *session, int socketPlayer1, int socketPlayer2) {
+	printf("\n--- RONDA DE APUESTAS ---\n");
 	for(int i =0;i<2;i++) {
+		printf("Player%i\n", *activePlayer);
 		sendCode(TURN_BET, *activePlayerSocket);
 		int stack = activePLayerStack(*session, *activePlayer);
 		sendCode(stack, *activePlayerSocket); // TODO: añadir una funcion que devuelva la session del activePlayer
+		printf("- Stack: %i\n", stack);
 
 		int bet = receiveCode(*activePlayerSocket);
+		printf("Bet: %i\n", bet);
 		
 		while(bet > stack) {
+			printf("Apuesta inválida (>%i). Vuelvelo a intentar...\n", stack);
 			sendCode(TURN_BET, *activePlayerSocket);
 			bet = receiveCode(*activePlayerSocket);
 		}
-		printf("Player %i -> bet: %i\n", i, bet);
+		
 		sendCode(TURN_BET_OK, *activePlayerSocket);
+		printf("Apuesta aceptada: %i\n", bet);
 		if(*activePlayer == player1) {
 			session->player1Bet = bet;
 		}
@@ -268,8 +275,6 @@ int main(int argc, char *argv[]){
 	activePlayer = player1;
 	inactivePlayerSocket = socketPlayer2;
 	inactivePlayer = player2;
-
-	printf("Apuestas...\n");
 	
 	rondaDeApuestas(&activePlayer, &activePlayerSocket, &inactivePlayer, &inactivePlayerSocket, &session, socketPlayer1, socketPlayer2);
 
@@ -281,46 +286,49 @@ int main(int argc, char *argv[]){
 		//TURN BET
 		sendCode(TURN_PLAY, activePlayerSocket);
 		sendCode(TURN_PLAY_WAIT, inactivePlayerSocket);
+		printf("Turno del player%i\n", activePlayer);	
 
 		//enviamos puntos
 		broadcastCode(calculatePoints(activePlayer == player1 ? &session.player1Deck : &session.player2Deck), activePlayerSocket, inactivePlayerSocket);
-		printf("player1 stack: %i\n player2 stack: %i\n", session.player1Stack, session.player2Stack);
+		
 		//enviamos el deck
+		printf("Deck sent to active player%i...\n", activePlayer);
 		if(activePlayer == player1) {
-			printf("active player1\n");
 			sendDeck(session.player1Deck, activePlayerSocket);
-			printf("deck sent to active player\n");
 			sendDeck(session.player1Deck, inactivePlayerSocket);
 		} else {
-			printf("active player2\n");
 			sendDeck(session.player2Deck, activePlayerSocket);
 			sendDeck(session.player2Deck, inactivePlayerSocket);
 		}
 
-		printf("Deck sent\n");
+		printf("Waiting player%i...\n", activePlayer);
 		unsigned int code = receiveCode(activePlayerSocket); //recibimos el stand o hit
-		printf("received play: %i\n", code);
+		showCode(code);
 
 		int canPlay = TRUE;
 		while (code == TURN_PLAY_HIT && canPlay) {
 			hit(&session, activePlayer);
 			unsigned int points = calculatePoints(activePlayer == player1 ? &session.player1Deck : &session.player2Deck);
 			if(points > 21) {
-				sendCode(TURN_PLAY_OUT, socketfd);
+				broadcastCode(TURN_PLAY_OUT, activePlayerSocket, inactivePlayerSocket);
 				canPlay = FALSE;
 			}
 			else {
-				sendCode(TURN_PLAY, socketfd);
+				broadcastCode(TURN_PLAY, activePlayerSocket, inactivePlayerSocket);
 			}
-			sendCode(points, socketfd);
+
+			broadcastCode(points, activePlayerSocket, inactivePlayerSocket);
+
 			if(activePlayer == player1) {
-				sendDeck(session.player1Deck, socketfd);
+				sendDeck(session.player1Deck, activePlayerSocket);
+				sendDeck(session.player1Deck, inactivePlayerSocket);
 			} else {
-				sendDeck(session.player2Deck, socketfd);
+				sendDeck(session.player2Deck, activePlayerSocket);
+				sendDeck(session.player2Deck, inactivePlayerSocket);
 			}
 
 			if(canPlay) {
-				receiveCode(activePlayerSocket);
+				code = receiveCode(activePlayerSocket);
 			}
 		}
 
