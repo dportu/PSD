@@ -238,6 +238,31 @@ int main(int argc, char *argv[]){
 	activePlayer = player1;
 	
 	rondaDeApuestas(activePlayer, activePlayerSocket, session, socketPlayer1, socketPlayer2);
+	while(1) {
+		//enviamos turn_play, puntos de jugada actual y deck actual al jugador activo
+
+		//TURN BET
+		sendCode(TURN_PLAY, activePlayerSocket);
+		if(activePlayer == player1) {
+			session.player1Deck.cards[session.player1Deck.numCards] = getRandomCard(session.gameDeck);
+			session.player1Deck.numCards++;
+		} else 
+		{
+			session.player2Deck.cards[session.player2Deck.numCards] = getRandomCard(session.gameDeck);
+			session.player2Deck.numCards++;
+		}
+		sendCode(calculatePoints(activePlayer == player1 ? session.player1Deck : session.player2Deck), activePlayerSocket);
+
+		sendCode()
+		unsigned int code = receiveCode(); //recibimos el stand o hit
+		if(code == TURN_PLAY_HIT) {
+			//repartir carta
+
+		}
+		else if(code == TURN_STAND) {
+			switchActivePlayer(&activePlayer, &activePlayerSocket, socketPlayer1, socketPlayer2);
+		}
+	}
 	
 	// Close sockets
 	close(socketPlayer1);
