@@ -168,11 +168,49 @@ unsigned int min (unsigned int a, unsigned int b){
 }
 
 void sendDeck(tDeck playerDeck, int playerSocket){
+	// Send message to the server side
+	int numCards = playerDeck.numCards;
+	int byteLength = send(playerSocket, &numCards, sizeof(int), 0);
+	// Check the number of bytes sent
+	if (byteLength < 0) {
+		showError("ERROR while writing to the socket 1");
+	}
+
+	if(playerDeck.numCards == 0) {
+		// Send message to the server side
+		unsigned int size = numCards * sizeof(int);
+		int nameLength = send(playerSocket, playerDeck.cards, size, 0);
+		// Check the number of bytes sent
+		if (nameLength < 0)
+			showError("ERROR while writing to the socket 2");
+	}
 	
 }
 
-int receiveDeck(int socket){
+void receiveDeck(tDeck *deck, int socket){ //TODO
+	int numCards;
 
+	int bytesLength = recv(socket, &numCards, sizeof(int), 0); //recibimos la longitud en bytes de la deck
+	printf("deck numCards: %i\n", numCards);
+	// Check read bytes
+	if (bytesLength < 0) {
+		showError("ERROR while reading name length");
+	}
+
+	if(numCards != 0) {
+		printf("Before deck memset\n");
+		memset(deck->cards, 0, numCards * sizeof(int));
+		printf("After deck memset\n");
+		int size = numCards * sizeof(int);
+		int messageLength = recv(socket, deck->cards, size, 0);
+		// Check read bytes
+		if (messageLength < 0)
+		showError("ERROR while reading from socket");
+	}
+	else {
+		memset(deck->cards, 0, sizeof(int)); //??
+		deck->numCards = 0;
+	}
 }
 
 void sendCode(unsigned int code, int socketfd) {

@@ -132,4 +132,4 @@ void sendCode(unsigned int code, int socketfd);
 int receiveCode(int socketC);
 
 void sendDeck(tDeck playerDeck, int playerSocket);
-int receiveDeck(int socket);
+void receiveDeck(tDeck *deck, int socket);

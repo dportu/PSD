@@ -48,13 +48,77 @@ unsigned int readOption (){
 	return bet;
 }
 
+void rondaDeApuestas(int socketfd) {
+	int code = receiveCode(socketfd);
+	if (code == TURN_BET) {
+		unsigned int stack = receiveCode(socketfd);
+		printf("Stack: %i\n", stack);
+		unsigned int bet;
+
+		do {
+			bet = readBet(); // pide por consola
+			sendCode(bet, socketfd);
+		} while (receiveCode(socketfd) == TURN_BET);
+
+		printf("Apuesta aceptada.\n");
+	}
+	else if (code == TURN_BET_OK) {
+		printf("Esperando al otro jugador...\n");
+	}
+}
+
+
+unsigned int jugarRonda(int socketfd) {
+	unsigned int receivedCode = receiveCode(socketfd);
+	unsigned int active = (receivedCode == TURN_PLAY);
+	printf("Received code: %i\n", receivedCode);
+	unsigned int canPlay = TRUE;
+	
+	unsigned int points = receiveCode(socketfd);
+	printf("Points: %i\n", points);
+	tDeck activePlayerDeck;
+	receiveDeck(&activePlayerDeck, socketfd);
+	printf("Deck received");
+	if(active) {
+		
+		unsigned int play = readOption(); //preparamos la primera play
+		printf("play: %i\n", play);
+		sendCode(play, socketfd); //enviamos la primera play
+
+		while(play == TURN_PLAY_HIT && canPlay) {
+			canPlay = (receiveCode(socketfd) == TURN_PLAY);
+			points = receiveCode(socketfd);
+			receiveDeck(&activePlayerDeck, socketfd);
+
+			if(active && canPlay) {
+				play = readOption();
+				sendCode(play, socketfd);
+			}
+		}
+	}
+	else {
+		while(canPlay) {
+			unsigned int code = receiveCode(socketfd);
+			if(code != TURN_PLAY_RIVAL_DONE){
+				canPlay = (code == TURN_PLAY);
+				points = receiveCode(socketfd);
+				receiveDeck(&activePlayerDeck, socketfd);
+			}
+			
+		}
+		
+	}
+	
+	return FALSE; //ACTUALIZAR A GAME WIN O GAME LOSE
+}
+
 int main(int argc, char *argv[]){
 
 	int socketfd;						/** Socket descriptor */
 	unsigned int port;					/** Port number (server) */
 	struct sockaddr_in server_address;	/** Server address structure */
 	char* serverIP;						/** Server IP */
-	unsigned int endOfGame;				/** Flag to control the end of the game */
+	unsigned int endOfGame = FALSE;				/** Flag to control the end of the game */
 	tString playerName;					/** Name of the player */
 	//unsigned int code;					/** Code */
 
@@ -103,22 +167,10 @@ int main(int argc, char *argv[]){
 	printf("%s\n",m);
 
 
-	while (1) {
-		int code = receiveCode(socketfd);
-		if (code == TURN_BET) {
-			unsigned int stack = receiveCode(socketfd);
-			unsigned int bet;
-
-			do {
-				bet = readBet(); // pide por consola
-				sendCode(bet, socketfd);
-			} while (receiveCode(socketfd) == TURN_BET);
-
-			printf("Apuesta aceptada.\n");
-		}
-		else if (code == TURN_BET_OK) {
-			printf("Esperando al otro jugador...\n");
-		}
+	
+	while (!endOfGame) {
+		rondaDeApuestas(socketfd);
+		endOfGame = jugarRonda(socketfd);
 	}
 
 	// Close socket
