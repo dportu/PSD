@@ -104,16 +104,22 @@ int main(int argc, char *argv[]){
 
 
 	while (1) {
-		receiveCode(socketfd);
-		unsigned int stack = receiveCode(socketfd);
-		
-		do {
-			unsigned int bet = readBet();
-			sendCode(bet, socketfd);
-		} while (receiveCode(socketfd) == TURN_BET);
-	}
-	
+		int code = receiveCode(socketfd);
+		if (code == TURN_BET) {
+			unsigned int stack = receiveCode(socketfd);
+			unsigned int bet;
 
+			do {
+				bet = readBet(); // pide por consola
+				sendCode(bet, socketfd);
+			} while (receiveCode(socketfd) == TURN_BET);
+
+			printf("Apuesta aceptada.\n");
+		}
+		else if (code == TURN_BET_OK) {
+			printf("Esperando al otro jugador...\n");
+		}
+	}
 
 	// Close socket
 	close(socketfd);

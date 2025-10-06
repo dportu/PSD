@@ -130,3 +130,6 @@ void receiveMessage(tString message, int socketC);
 
 void sendCode(unsigned int code, int socketfd);
 int receiveCode(int socketC);
+
+void sendDeck(tDeck playerDeck, int playerSocket);
+int receiveDeck(int socket);

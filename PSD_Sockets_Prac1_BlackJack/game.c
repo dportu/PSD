@@ -167,6 +167,14 @@ unsigned int min (unsigned int a, unsigned int b){
 	return (a<b?a:b);
 }
 
+void sendDeck(tDeck playerDeck, int playerSocket){
+	
+}
+
+int receiveDeck(int socket){
+
+}
+
 void sendCode(unsigned int code, int socketfd) {
 	
 	/*// Send message to the server side
