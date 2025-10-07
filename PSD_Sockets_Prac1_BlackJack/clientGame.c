@@ -121,16 +121,8 @@ unsigned int jugarRonda(int socketfd) {
 			
 		}
 	}
-	
-	/*
-	unsigned int code = receiveCode(socketfd);
-			if(code != TURN_PLAY_RIVAL_DONE){
-				canPlay = (code == TURN_PLAY);
-				points = receiveInt(socketfd);
-				receiveDeck(&activePlayerDeck, socketfd);
-			}*/
 
-	return FALSE; //ACTUALIZAR A GAME WIN O GAME LOSE
+	return receiveCode(socketfd) != TURN_BET; //RECIBIMOS SI LA PARTIDA ACABA O SIGUE
 }
 
 int main(int argc, char *argv[]){

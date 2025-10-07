@@ -3,6 +3,7 @@
 //nuestras
 
 #define PLAYER_NAME_MAX 10
+#define MAX_CONNECTIONS 10
 
 //nuestras
 
@@ -52,7 +53,6 @@ typedef struct{
 
 /** Players in one session */
 typedef enum {player1, player2} tPlayer;
-
 
 /**
  * Calculates the next player.
@@ -112,3 +112,7 @@ unsigned int getRandomCard (tDeck* deck);
 // void createClient(int socketfd, unsigned int clientLength, struct sockaddr_in playerAddress, int socketPlayer, tSession *session, int player);
 
 // void switchActivePlayer(tPlayer *activePLayer, int *activePlayer, int socket1, int socket2); //cambia el jugador activo
+
+
+// Function for thread processing
+void *threadProcessing(void *arg);
