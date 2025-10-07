@@ -51,7 +51,7 @@ unsigned int readOption (){
 void rondaDeApuestas(int socketfd) {
 	int code = receiveCode(socketfd);
 	if (code == TURN_BET) {
-		unsigned int stack = receiveCode(socketfd);
+		unsigned int stack = receiveInt(socketfd);
 		printf("Stack disponible: %i\n", stack);
 		unsigned int bet;
 
@@ -69,47 +69,63 @@ void rondaDeApuestas(int socketfd) {
 
 
 unsigned int jugarRonda(int socketfd) {
-	unsigned int receivedCode = receiveCode(socketfd);
-	unsigned int active = (receivedCode == TURN_PLAY);
-	showCode(receivedCode);
-	unsigned int canPlay = TRUE;
-	
-	unsigned int points = receiveCode(socketfd);
-	printf("Points: %i\n", points);
-	tDeck activePlayerDeck;
-	receiveDeck(&activePlayerDeck, socketfd);
-	printFancyDeck(&activePlayerDeck);
+	for(int k =0; k< 2; k++) {
+		printf("Inicio de bucle for\n");
+		unsigned int receivedCode = receiveCode(socketfd);
+		unsigned int active = (receivedCode == TURN_PLAY);
 
-	if(active) {
-		unsigned int play = readOption(); //preparamos la primera play
-		printf("Play: %i\n", play);
-		sendCode(play, socketfd); //enviamos la primera play
+		unsigned int canPlay = TRUE;
+		
+		unsigned int points = receiveInt(socketfd);
+		printf("Points: %i\n", points);
+		tDeck activePlayerDeck;
+		receiveDeck(&activePlayerDeck, socketfd);
 
-		while(play == TURN_PLAY_HIT && canPlay) {
-			canPlay = (receiveCode(socketfd) == TURN_PLAY);
-			points = receiveCode(socketfd);
-			printf("Points: %u\n", points);
-			receiveDeck(&activePlayerDeck, socketfd);
+		if(active) {
+			unsigned int play = readOption(); //preparamos la primera play
+			sendCode(play, socketfd); //enviamos la primera play
 
-			if(active && canPlay) {
-				play = readOption();
-				sendCode(play, socketfd);
+			while(play == TURN_PLAY_HIT && canPlay) {
+				printf("Sent Play: %i\n", play);
+				canPlay = (receiveCode(socketfd) == TURN_PLAY);
+				points = receiveInt(socketfd);
+				printf("Points: %u\n", points);
+				receiveDeck(&activePlayerDeck, socketfd);
+				printFancyDeck(&activePlayerDeck);
+
+				if(active && canPlay) {
+					play = readOption();
+					sendCode(play, socketfd);
+				}
 			}
 		}
-	}
-	else {
-		while(canPlay) {
-			unsigned int code = receiveCode(socketfd);
-			if(code != TURN_PLAY_RIVAL_DONE){
-				canPlay = (code == TURN_PLAY);
-				points = receiveCode(socketfd);
-				receiveDeck(&activePlayerDeck, socketfd);
+		else {
+			while(canPlay) {
+				printf("Debería recibir turn play\n");
+				unsigned int code = receiveCode(socketfd);
+				if(code != TURN_PLAY_RIVAL_DONE){
+					canPlay = (code == TURN_PLAY);
+					points = receiveInt(socketfd);
+					receiveDeck(&activePlayerDeck, socketfd);
+					printFancyDeck(&activePlayerDeck);
+				}
+				else {
+					canPlay = FALSE;
+				}
+				
 			}
 			
 		}
-		
 	}
 	
+	/*
+	unsigned int code = receiveCode(socketfd);
+			if(code != TURN_PLAY_RIVAL_DONE){
+				canPlay = (code == TURN_PLAY);
+				points = receiveInt(socketfd);
+				receiveDeck(&activePlayerDeck, socketfd);
+			}*/
+
 	return FALSE; //ACTUALIZAR A GAME WIN O GAME LOSE
 }
 
@@ -169,6 +185,7 @@ int main(int argc, char *argv[]){
 	
 	while (!endOfGame) {
 		rondaDeApuestas(socketfd);
+		printf("--- ROUND ---\n");
 		endOfGame = jugarRonda(socketfd);
 	}
 

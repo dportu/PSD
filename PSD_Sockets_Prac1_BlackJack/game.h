@@ -129,7 +129,9 @@ void sendMessage(tString message, int socketfd);
 void receiveMessage(tString message, int socketC);
 
 void sendCode(unsigned int code, int socketfd);
-int receiveCode(int socketC);
+unsigned receiveCode(int socketC);
 
-void sendDeck(tDeck playerDeck, int playerSocket);
+void sendDeck(tDeck *playerDeck, int playerSocket);
 void receiveDeck(tDeck *deck, int socket);
+
+unsigned int receiveInt(int socketC);
