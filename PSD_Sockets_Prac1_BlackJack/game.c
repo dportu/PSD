@@ -59,7 +59,7 @@ void showCode (unsigned int code){
 		    	break;
 		}
 
-	printf ("Received:%s\n", string);		
+	printf ("%s\n", string);		
 }
 
 char suitToChar (unsigned int number){
@@ -159,7 +159,7 @@ void printFancyDeck (tDeck* deck){
 	for (int currentCard=0; currentCard<deck->numCards; currentCard++)
 		printf (" |__%c|", cardNumberToChar (deck->cards[currentCard]));
 
-	printf ("\n");
+	printf ("\n\n");
 }
 
 unsigned int min (unsigned int a, unsigned int b){
@@ -182,7 +182,7 @@ void sendDeck(tDeck *playerDeck, int playerSocket){
 		if (nameLength < 0)
 			showError("ERROR while writing to the socket 2");
 	}
-	printFancyDeck(playerDeck);
+	// printFancyDeck(playerDeck);
 }
 
 void receiveDeck(tDeck *deck, int socket){ 
@@ -194,7 +194,7 @@ void receiveDeck(tDeck *deck, int socket){
 	}
 
 	deck->numCards = numCards;
-	printf("number of cards in the received deck: %i\n", numCards);
+	//printf("number of cards in the received deck: %i\n", numCards);
 
 	if(numCards != 0) {
 		memset(deck->cards, 0, DECK_SIZE * sizeof(int));
@@ -222,7 +222,7 @@ unsigned int receiveCode(int socketC) {
 		showError("ERROR while reading from socket");
 	}
 	
-	showCode(code);
+	//showCode(code);
 	return code;
 }
 
@@ -234,7 +234,7 @@ unsigned int receiveInt(int socketC) {
 		showError("ERROR while reading from socket");
 	}
 	
-	printf("Received int: %i\n", code);
+	//printf("Received int: %i\n", code);
 	return code;
 }
 

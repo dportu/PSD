@@ -52,7 +52,8 @@ void rondaDeApuestas(int socketfd) {
 	int code = receiveCode(socketfd);
 	if (code == TURN_BET) {
 		unsigned int stack = receiveInt(socketfd);
-		printf("Stack disponible: %i\n", stack);
+		printf(" -- Betting Round Begins --\n\n");
+		printf("Available Stack: %i\n", stack);
 		unsigned int bet;
 
 		do {
@@ -60,17 +61,17 @@ void rondaDeApuestas(int socketfd) {
 			sendCode(bet, socketfd);
 		} while (receiveCode(socketfd) == TURN_BET);
 
-		printf("Apuesta aceptada.\n");
+		printf("Bet Accepted.\n");
 	}
 	else if (code == TURN_BET_OK) {
-		printf("Esperando al otro jugador...\n");
+		printf("Waiting for the other player...\n");
 	}
 }
 
 
 unsigned int jugarRonda(int socketfd) {
 	for(int k =0; k< 2; k++) {
-		printf("Inicio de bucle for\n");
+		printf(" --- Game Start --- \n");
 		unsigned int receivedCode = receiveCode(socketfd);
 		unsigned int active = (receivedCode == TURN_PLAY);
 
@@ -87,7 +88,10 @@ unsigned int jugarRonda(int socketfd) {
 			sendCode(play, socketfd); //enviamos la primera play
 
 			while(canPlay) {
-				printf("Sent Play: %i\n", play);
+				printf("Sent Play: ");
+				showCode(play);
+				printf("\n------\n\n\n");
+				
 				unsigned int receivedCode = receiveCode(socketfd);
 				canPlay = (receivedCode == TURN_PLAY || receivedCode == TURN_PLAY_OUT);
 				if(canPlay) {
@@ -105,13 +109,17 @@ unsigned int jugarRonda(int socketfd) {
 		}
 		else {
 			while(canPlay) {
-				printf("Debería recibir turn play\n");
+				printf(" -- YOU ARE CURRENTLY SPECTATING -- \n\n");
 				unsigned int code = receiveCode(socketfd);
 				if(code != TURN_PLAY_RIVAL_DONE){
 					canPlay = (code == TURN_PLAY_WAIT || code == TURN_PLAY_OUT);
 					points = receiveInt(socketfd);
 					receiveDeck(&activePlayerDeck, socketfd);
 					printFancyDeck(&activePlayerDeck);
+
+					if(code == TURN_PLAY_OUT) {
+						printf("-- YOU ARE OUT --\n\n");
+					}
 				}
 				else {
 					canPlay = FALSE;
@@ -122,7 +130,15 @@ unsigned int jugarRonda(int socketfd) {
 		}
 	}
 
-	return receiveCode(socketfd) != TURN_BET; //RECIBIMOS SI LA PARTIDA ACABA O SIGUE
+	unsigned int result = receiveCode(socketfd);
+	if (result == TURN_GAME_LOSE) {
+		printf("Oh no! You lost :(\n");
+	}
+	else if (result == TURN_GAME_WIN) {
+		printf("Hell yeah! You won :)\n");
+	}
+
+	return result != TURN_BET; //RECIBIMOS SI LA PARTIDA ACABA O SIGUE
 }
 
 int main(int argc, char *argv[]){
@@ -181,7 +197,6 @@ int main(int argc, char *argv[]){
 	
 	while (!endOfGame) {
 		rondaDeApuestas(socketfd);
-		printf("--- ROUND ---\n");
 		endOfGame = jugarRonda(socketfd);
 	}
 

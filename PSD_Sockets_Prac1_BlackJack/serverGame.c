@@ -187,7 +187,7 @@ void rondaDeApuestas(tPlayer *activePlayer, int *activePlayerSocket, tPlayer *in
 
 void hit(tSession *session, tPlayer player) {
 	unsigned int card = getRandomCard(&session->gameDeck);
-	printf("Selected card: %i", card);
+	//printf("Selected card: %i", card);
 	if(player == player1) {
 		session->player1Deck.cards[session->player1Deck.numCards] = card;
 		session->player1Deck.numCards++;
@@ -289,12 +289,12 @@ void *threadProcessing(void *threadArgs){
 
 	while(session.player1Stack > 0 && session.player2Stack > 0) {
 
-		printf("\n--- RONDA DE APUESTAS ---\n");
+		printf("\n--- Betting begins ---\n");
 		rondaDeApuestas(&activePlayer, &activePlayerSocket, &inactivePlayer, &inactivePlayerSocket, &session, socketPlayer1, socketPlayer2);
 		//enviamos turn_play, puntos de jugada actual y deck actual al jugador activo
 
 
-		printf("Empieza la ronda!\n");
+		printf("--- Round starts ---\n");
 		unsigned int pointsPlayer1 = 0;
 		unsigned int pointsPlayer2 = 0;
 		
@@ -302,13 +302,13 @@ void *threadProcessing(void *threadArgs){
 			//TURN BET
 			sendCode(TURN_PLAY, activePlayerSocket);
 			sendCode(TURN_PLAY_WAIT, inactivePlayerSocket);
-			printf("Turno del player%i\n", activePlayer);	
+			printf("Player%i's turn\n", activePlayer);	
 
 			//enviamos puntos
 			broadcastCode(calculatePoints(activePlayer == player1 ? &session.player1Deck : &session.player2Deck), activePlayerSocket, inactivePlayerSocket);
 			
 			//enviamos el deck
-			printf("Deck sent to active player%i...\n", activePlayer);
+			
 			if(activePlayer == player1) {
 				sendDeck(&session.player1Deck, activePlayerSocket);
 				sendDeck(&session.player1Deck, inactivePlayerSocket);
@@ -361,7 +361,8 @@ void *threadProcessing(void *threadArgs){
 			sendCode(TURN_PLAY_RIVAL_DONE, inactivePlayerSocket);
 
 
-			printf("player1 stack: %i\n player2 stack: %i\n", session.player1Stack, session.player2Stack);
+			//printf("player1 stack: %i\nplayer2 stack: %i\n", session.player1Stack, session.player2Stack);
+			printSession(&session);
 			switchActivePlayer(&activePlayer, &activePlayerSocket,&inactivePlayer, &inactivePlayerSocket, socketPlayer1, socketPlayer2);
 			
 		} //final del bucle for
