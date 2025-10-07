@@ -80,22 +80,26 @@ unsigned int jugarRonda(int socketfd) {
 		printf("Points: %i\n", points);
 		tDeck activePlayerDeck;
 		receiveDeck(&activePlayerDeck, socketfd);
+		printFancyDeck(&activePlayerDeck);
 
 		if(active) {
 			unsigned int play = readOption(); //preparamos la primera play
 			sendCode(play, socketfd); //enviamos la primera play
 
-			while(play == TURN_PLAY_HIT && canPlay) {
+			while(canPlay) {
 				printf("Sent Play: %i\n", play);
-				canPlay = (receiveCode(socketfd) == TURN_PLAY);
-				points = receiveInt(socketfd);
-				printf("Points: %u\n", points);
-				receiveDeck(&activePlayerDeck, socketfd);
-				printFancyDeck(&activePlayerDeck);
-
-				if(active && canPlay) {
-					play = readOption();
-					sendCode(play, socketfd);
+				unsigned int receivedCode = receiveCode(socketfd);
+				canPlay = (receivedCode == TURN_PLAY || receivedCode == TURN_PLAY_OUT);
+				if(canPlay) {
+					points = receiveInt(socketfd);
+					printf("Points: %u\n", points);
+					receiveDeck(&activePlayerDeck, socketfd);
+					printFancyDeck(&activePlayerDeck);
+					if(receivedCode == TURN_PLAY) { //
+						play = readOption();
+						sendCode(play, socketfd);
+					}
+					
 				}
 			}
 		}
@@ -104,7 +108,7 @@ unsigned int jugarRonda(int socketfd) {
 				printf("Debería recibir turn play\n");
 				unsigned int code = receiveCode(socketfd);
 				if(code != TURN_PLAY_RIVAL_DONE){
-					canPlay = (code == TURN_PLAY);
+					canPlay = (code == TURN_PLAY_WAIT || code == TURN_PLAY_OUT);
 					points = receiveInt(socketfd);
 					receiveDeck(&activePlayerDeck, socketfd);
 					printFancyDeck(&activePlayerDeck);

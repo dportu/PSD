@@ -285,6 +285,9 @@ int main(int argc, char *argv[]){
 	while(session.player1Stack > 0 && session.player2Stack > 0) {
 		//enviamos turn_play, puntos de jugada actual y deck actual al jugador activo
 
+		unsigned int pointsPlayer1 = 0;
+		unsigned int pointsPlayer2 = 0;
+		
 		for(int k = 0;k<2;k++) { //cada ronda tiene dos vueltas, una por cada jugador
 			//TURN BET
 			sendCode(TURN_PLAY, activePlayerSocket);
@@ -311,12 +314,22 @@ int main(int argc, char *argv[]){
 			while (code == TURN_PLAY_HIT && canPlay) {
 				hit(&session, activePlayer);
 				unsigned int points = calculatePoints(activePlayer == player1 ? &session.player1Deck : &session.player2Deck);
+				
+				//Actualizamos los puntos de la ronda del player activo
+				if(activePlayer == player1) {
+					pointsPlayer1 = points;
+				}
+				else {
+					pointsPlayer2 = points;
+				}
+
 				if(points > 21) {
 					broadcastCode(TURN_PLAY_OUT, activePlayerSocket, inactivePlayerSocket);
 					canPlay = FALSE;
 				}
 				else {
-					broadcastCode(TURN_PLAY, activePlayerSocket, inactivePlayerSocket);
+					sendCode(TURN_PLAY, activePlayerSocket);
+    				sendCode(TURN_PLAY_WAIT, inactivePlayerSocket);
 				}
 				
 				broadcastCode(points, activePlayerSocket, inactivePlayerSocket);
@@ -336,12 +349,15 @@ int main(int argc, char *argv[]){
 
 			sendCode(TURN_PLAY_WAIT, activePlayerSocket);
 			sendCode(TURN_PLAY_RIVAL_DONE, inactivePlayerSocket);
-			//TODO TURN_GAME_LOSE TURN_GAME_WIN
+
 
 			printf("player1 stack: %i\n player2 stack: %i\n", session.player1Stack, session.player2Stack);
 			switchActivePlayer(&activePlayer, &activePlayerSocket,&inactivePlayer, &inactivePlayerSocket, socketPlayer1, socketPlayer2);
 			
-		}
+		} //final del bucle for
+
+		//ACTUALIZAR LAS FICHAS DE CADA JUGADOR
+		unsigned int winner = winner(pointsPlayer1, pointsPlayer2, 21);
 	}
 	
 	// Close sockets
@@ -349,4 +365,6 @@ int main(int argc, char *argv[]){
 	close(socketPlayer2);
 	close(socketfd);
 }
-
+unsigned int winner(unsigned int points1, unsigned int points2, unsigned int target) {
+	
+}
