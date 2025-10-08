@@ -145,7 +145,7 @@ void switchActivePlayer(tPlayer *activePlayer, int *activePlayerSocket, tPlayer 
 	// printf("inactive player before switch: player%i\n", *inactivePlayer);
 }
 
-int activePLayerStack(tSession session, tPlayer activePlayer) {
+unsigned int activePLayerStack(tSession session, tPlayer activePlayer) {
 	if(activePlayer == player2)  {
 		return session.player2Stack;
 	}
@@ -158,21 +158,21 @@ void rondaDeApuestas(tPlayer *activePlayer, int *activePlayerSocket, tPlayer *in
 	for(int i =0;i<2;i++) {
 		printf("Player%i\n", *activePlayer);
 		sendCode(TURN_BET, *activePlayerSocket);
-		int stack = activePLayerStack(*session, *activePlayer);
+		unsigned int stack = activePLayerStack(*session, *activePlayer);
 		sendCode(stack, *activePlayerSocket); // TODO: añadir una funcion que devuelva la session del activePlayer
 		printf("- Stack: %i\n", stack);
 
 		unsigned int bet = receiveInt(*activePlayerSocket);
-		printf("Bet: %i\n", bet);
+		printf("- Bet: %i\n", bet);
 		
 		while(bet > stack) {
-			printf("Apuesta inválida (>%i). Vuelvelo a intentar...\n", stack);
+			printf("Invalid bet (>%i)...\n", stack);
 			sendCode(TURN_BET, *activePlayerSocket);
 			bet = receiveInt(*activePlayerSocket);
 		}
 		
 		sendCode(TURN_BET_OK, *activePlayerSocket);
-		printf("Apuesta aceptada: %i\n", bet);
+		// printf("Valid bet: %i\n", bet);
 		if(*activePlayer == player1) {
 			session->player1Bet = bet;
 		}
@@ -203,20 +203,25 @@ void broadcastCode(unsigned int code, int activePlayerSocket, int inactivePlayer
 }
 
 unsigned int winner(unsigned int points1, unsigned int points2) {
-	unsigned int winner = 0;
-	unsigned int thereIsAWinner = min(points1, points2) <= 21;
-	
-	if(thereIsAWinner) {
-		winner = min(points1, points2);
-		if(points2 > winner && points2 <= 21) {
-			winner = points2;
-		}
-		else if(points1 > winner && points1 <= 21) {
-			winner = points1;
-		}
-	} 
+	// Ambos se pasan o empatan, nadie gana
+    if ((points1 > 21 && points2 > 21) || (points1 == points2))
+        return 0;
 
-	return winner;
+    // Si uno se pasa, gana el otro
+    if (points1 > 21) {
+		return 2;
+	}
+    if (points2 > 21) {
+		return 1;
+	}
+
+    // Ninguno se pasa, gana el que más puntos tenga
+	if (points1 > points2) {
+		return 1;
+	}
+    else {
+		return 2;
+	}
 }
 
 /**
@@ -302,11 +307,21 @@ void *threadProcessing(void *threadArgs){
 			//TURN BET
 			sendCode(TURN_PLAY, activePlayerSocket);
 			sendCode(TURN_PLAY_WAIT, inactivePlayerSocket);
-			printf("Player%i's turn\n", activePlayer);	
+
+			if (activePlayer == player1) {
+				printf("%s's turn\n", session.player1Name);
+			}
+			else {
+				printf("%s's turn\n", session.player2Name);
+			}	
+			
+			// Repartimos dos cartas
+			hit(&session, activePlayer);
+			hit(&session, activePlayer);
 
 			//enviamos puntos
 			broadcastCode(calculatePoints(activePlayer == player1 ? &session.player1Deck : &session.player2Deck), activePlayerSocket, inactivePlayerSocket);
-			
+
 			//enviamos el deck
 			
 			if(activePlayer == player1) {

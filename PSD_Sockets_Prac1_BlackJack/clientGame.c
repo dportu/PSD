@@ -103,7 +103,9 @@ unsigned int jugarRonda(int socketfd) {
 						play = readOption();
 						sendCode(play, socketfd);
 					}
-					
+					else if(receivedCode == TURN_PLAY_OUT) {
+						printf("-- YOU ARE OUT --\n\n");
+					}
 				}
 			}
 		}
@@ -118,7 +120,7 @@ unsigned int jugarRonda(int socketfd) {
 					printFancyDeck(&activePlayerDeck);
 
 					if(code == TURN_PLAY_OUT) {
-						printf("-- YOU ARE OUT --\n\n");
+						printf("-- OPPONENT IS OUT --\n\n");
 					}
 				}
 				else {
