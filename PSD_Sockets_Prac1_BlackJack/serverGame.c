@@ -383,12 +383,14 @@ void *threadProcessing(void *threadArgs){
 		} //final del bucle for
 
 		//ACTUALIZAR LAS FICHAS DE CADA JUGADOR
+		printf("Player1's points: %i\nPlayer2's points: %i\n", pointsPlayer1, pointsPlayer2);
 		unsigned int roundWinner = winner(pointsPlayer1, pointsPlayer2);
-		if(roundWinner == pointsPlayer1) {
+		printf("The winner of the round is player%i\n", roundWinner);
+		if(roundWinner == 1) {
 			session.player1Stack += session.player2Bet;
 			session.player2Stack -= session.player2Bet;
 		}
-		else if(roundWinner == pointsPlayer2) {
+		else if(roundWinner == 2) {
 			session.player1Stack -= session.player1Bet;
 			session.player2Stack += session.player1Bet;
 		}
@@ -399,10 +401,14 @@ void *threadProcessing(void *threadArgs){
 		if(session.player1Stack == 0) {
 			sendCode(TURN_GAME_LOSE, socketPlayer1);
 			sendCode(TURN_GAME_WIN, socketPlayer2);
+
+			printf("%s has won the game and %s has lost", session.player2Name, session.player1Name);
 		}
 		else if(session.player2Stack == 0) {
 			sendCode(TURN_GAME_LOSE, socketPlayer2);
 			sendCode(TURN_GAME_WIN, socketPlayer1);
+
+			printf("%s has won the game and %s has lost", session.player1Name, session.player2Name);
 		}
 		else {
 			broadcastCode(TURN_BET, socketPlayer1, socketPlayer2);
