@@ -116,6 +116,7 @@ unsigned int jugarRonda(int socketfd) {
 				if(code != TURN_PLAY_RIVAL_DONE){
 					canPlay = (code == TURN_PLAY_WAIT || code == TURN_PLAY_OUT);
 					points = receiveInt(socketfd);
+					printf("Points: %u\n", points);
 					receiveDeck(&activePlayerDeck, socketfd);
 					printFancyDeck(&activePlayerDeck);
 
