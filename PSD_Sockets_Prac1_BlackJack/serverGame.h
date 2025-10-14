@@ -2,8 +2,7 @@
 
 //nuestras
 
-#define PLAYER_NAME_MAX 10
-#define MAX_CONNECTIONS 10
+#define MAX_CONNECTIONS 2
 
 //nuestras
 
