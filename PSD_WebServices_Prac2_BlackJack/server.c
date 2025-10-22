@@ -3,14 +3,9 @@
 /** Shared array that contains all the games. */
 tGame games[MAX_GAMES];
 
-// To ask
-unsigned int lowestEmptyIndex;
-unsigned int lowestGameWaitingIndex;
-
-
 pthread_mutex_t mutex;
 
-pthread_cond_t reg;
+pthread_cond_t reg; // To ask
 
 void initGame (tGame *game){
 
@@ -142,6 +137,23 @@ int iterateGames() {
 	return indexEmpty;
 }
 
+void hit(tPlayer player, int gameIndex) {
+	pthread_mutex_lock(&mutex);
+
+	unsigned int card = getRandomCard(games[gameIndex].gameDeck.cards);
+	//printf("Selected card: %i", card);
+	if(player == player1) {
+		games[gameIndex].player1Deck.cards[games[gameIndex].player1Deck.__size] = card;
+		games[gameIndex].player1Deck.__size++;
+	} 
+	else {
+		games[gameIndex].player2Deck.cards[games[gameIndex].player2Deck.__size] = card;
+		games[gameIndex].player2Deck.__size++;
+	}
+
+	pthread_mutex_unlock(&mutex);
+}
+
 int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, int* result){
 	int gameIndex;
 
@@ -158,25 +170,56 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 	//modify things
 	pthread_mutex_lock(&mutex);
 
-	// Todo: mutex wait
-
 	gameIndex = iterateGames();
-	if(gameIndex < MAX_GAMES) {
+	if(gameIndex == MAX_GAMES) { // game is full
+		*result = ERROR_SERVER_FULL;
+	}
+	else {
 		if(games[gameIndex].status == gameEmpty) {
 			games[gameIndex].player1Name;
 			games[gameIndex].status = gameWaitingPlayer;
 		}
 		else {
-			games[gameIndex].player2Name;
-			games[gameIndex].status = gameReady;
+			if(playerName.msg == games[gameIndex].player1Name) { //the name is already taken
+				*result = ERROR_NAME_REPEATED;
+			}
+			else { //the name is not already taken in the game
+				games[gameIndex].player2Name;
+				games[gameIndex].status = gameReady;
+			}
 		}
 	}
 
-	// Todo: mutex signal/broadcast
 
 	pthread_mutex_unlock(&mutex);
 
   	return SOAP_OK;
+}
+
+int blackJackns__getStatus(blackJackns__tMessage playerName, int gameIndex, int *result) {
+	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
+		*result = (int)games[gameIndex].status;
+	}
+	else {
+		*result = ERROR_PLAYER_NOT_FOUND;
+	}
+}
+
+int blackJackns__playerMove(blackJackns__tMessage playerName, int gameIndex, unsigned int move, int *result) { // ToDo
+	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
+		if (move == PLAYER_STAND) {
+
+		}
+		else if (move == PLAYER_HIT_CARD) {
+
+		}
+		else {
+
+		}
+	}
+	else {
+		*result = ERROR_PLAYER_NOT_FOUND;
+	}
 }
 
 void *processRequest(void *soap){
@@ -207,6 +250,8 @@ int main(int argc, char **argv){
 		printf("Usage: %s port\n",argv[0]);
 		exit(0);
 	}
+
+	pthread_mutex_init(&mutex, NULL);
 
 	// Init soap environment
 	soap_init(&soap);
