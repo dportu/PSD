@@ -3,6 +3,15 @@
 /** Shared array that contains all the games. */
 tGame games[MAX_GAMES];
 
+// To ask
+unsigned int lowestEmptyIndex;
+unsigned int lowestGameWaitingIndex;
+
+
+pthread_mutex_t mutex;
+
+pthread_cond_t reg;
+
 void initGame (tGame *game){
 
 	// Init players' name
@@ -118,21 +127,54 @@ void copyGameStatusStructure (blackJackns__tBlock* status, char* message, blackJ
 	status->code = newCode;	
 }
 
+int iterateGames() {
+	int i = 0;
+	int indexEmpty = MAX_GAMES;
+	while(i < MAX_GAMES && games[i].status != gameWaitingPlayer) {
+		if(games[i].status == gameEmpty && games[i].status < indexEmpty) {
+			indexEmpty = i;
+		}
+	}
 
+	if (games[i].status == gameWaitingPlayer) {
+		return i;
+	}
+	return indexEmpty;
+}
 
 int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, int* result){
 	int gameIndex;
 
 	// Set \0 at the end of the string
-	playerName.msg[playerName.__size] = 0; // '\0' ?
+	playerName.msg[playerName.__size] = 0;
 
 	if (DEBUG_SERVER) {
 		printf ("[Register] Registering new player -> [%s]\n", playerName.msg);
 	}
-			
-	//TODO?
-	
-	
+		
+	//block games[] mutex
+	//iterate looking for game[i] == gaeWaitingPlayer
+	//else iterate looking for game empty
+	//modify things
+	pthread_mutex_lock(&mutex);
+
+	// Todo: mutex wait
+
+	gameIndex = iterateGames();
+	if(gameIndex < MAX_GAMES) {
+		if(games[gameIndex].status == gameEmpty) {
+			games[gameIndex].player1Name;
+			games[gameIndex].status = gameWaitingPlayer;
+		}
+		else {
+			games[gameIndex].player2Name;
+			games[gameIndex].status = gameReady;
+		}
+	}
+
+	// Todo: mutex signal/broadcast
+
+	pthread_mutex_unlock(&mutex);
 
   	return SOAP_OK;
 }
