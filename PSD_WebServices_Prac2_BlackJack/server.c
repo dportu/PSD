@@ -5,7 +5,7 @@ tGame games[MAX_GAMES];
 
 pthread_mutex_t mutex;
 
-pthread_cond_t reg; // To ask
+pthread_cond_t reg; // TODO
 // register que espera al jugador 2
 // status para ver si le toca jugar o no
 
@@ -125,6 +125,7 @@ void copyGameStatusStructure (blackJackns__tBlock* status, char* message, blackJ
 }
 
 int iterateGames() {
+	// TODO: bloquear y desbloquear cada game al comprobarla
 	int i = 0;
 	int indexEmpty = MAX_GAMES;
 	while(i < MAX_GAMES && games[i].status != gameWaitingPlayer) {
