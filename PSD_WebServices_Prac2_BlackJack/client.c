@@ -1,5 +1,8 @@
 #include "client.h"
 
+// TODO: cada jugador inactivo al hacer get status se bloquea, 
+// y el activo al hacer su jugada hace un signal al otro para que pille la nueva jugada
+
 unsigned int readBet (){
 
 	int isValid, bet=0;
