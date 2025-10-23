@@ -6,6 +6,8 @@ tGame games[MAX_GAMES];
 pthread_mutex_t mutex;
 
 pthread_cond_t reg; // To ask
+// register que espera al jugador 2
+// status para ver si le toca jugar o no
 
 void initGame (tGame *game){
 
