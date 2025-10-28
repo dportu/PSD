@@ -289,6 +289,8 @@ int main(int argc, char **argv){
 	soap.accept_timeout = 3600; // server stops after 1 hour of inactivity
 	soap.max_keep_alive = 100; // max keep-alive sequence
 
+	initServerStructures(&soap);
+
 	// Get listening port
 	port = atoi(argv[1]);
 
