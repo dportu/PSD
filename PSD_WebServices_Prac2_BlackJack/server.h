@@ -8,7 +8,7 @@
 #define DEBUG_SERVER 1
 
 /** Maximum number of active games in the server */
-#define MAX_GAMES 5
+#define MAX_GAMES 2
 
 /** Initial stack for each player */
 #define INITIAL_STACK 1
@@ -55,6 +55,8 @@ typedef struct game{
 	tGameState status;						/** Flag to indicate the status of this game */
 
 	// TODO: mutex de cada mutex
+	pthread_mutex_t registerMutex;
+	pthread_mutex_t statusMutex;
 
 }tGame;
 

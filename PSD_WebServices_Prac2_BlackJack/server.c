@@ -3,8 +3,6 @@
 /** Shared array that contains all the games. */
 tGame games[MAX_GAMES];
 
-pthread_mutex_t mutex;
-
 pthread_cond_t reg; // TODO
 // register que espera al jugador 2
 // status para ver si le toca jugar o no
@@ -125,23 +123,47 @@ void copyGameStatusStructure (blackJackns__tBlock* status, char* message, blackJ
 }
 
 int iterateGames() {
-	// TODO: bloquear y desbloquear cada game al comprobarla
 	int i = 0;
-	int indexEmpty = MAX_GAMES;
-	while(i < MAX_GAMES && games[i].status != gameWaitingPlayer) {
-		if(games[i].status == gameEmpty && games[i].status < indexEmpty) {
-			indexEmpty = i;
+	int found = FALSE;
+	//int indexEmpty = MAX_GAMES;
+	//int waitingPlayer = FALSE;
+
+	while(i < MAX_GAMES && !found) {
+		// pthread_mutex_lock(&games[i].registerMutex);
+		if(games[i].status != gameReady) {
+			found = TRUE;
+		}
+		else {
+			// pthread_mutex_unlock(&games[i].registerMutex);
+			i++;
 		}
 	}
-
-	if (games[i].status == gameWaitingPlayer) {
-		return i;
+/*
+	printf("Comenzamos la iteracion de los games");
+	while(i < MAX_GAMES && !waitingPlayer) {
+		pthread_mutex_lock(&games[i].registerMutex);
+		if (games[i].status != gameWaitingPlayer) { // partida vacia o llena
+			if(games[i].status == gameEmpty && i < indexEmpty) { //si es la primera partida vacia que vemos la bloqueamos
+				indexEmpty = i;
+			}
+			else { // si no lo es o esta llena la desbloqueamos
+				pthread_mutex_unlock(&games[i].registerMutex);
+			}
+		}
+		else { //partida con un jugador esperando
+			if(indexEmpty != MAX_GAMES) {
+				pthread_mutex_unlock(&games[indexEmpty].registerMutex); //si teniamos una partida vacia bloqueada, la desbloqueamos 
+			}
+			indexEmpty = i;
+			waitingPlayer = TRUE;
+		}
+		i++;
 	}
-	return indexEmpty;
+*/
+	return i;
 }
 
 void hit(tPlayer player, int gameIndex) {
-	pthread_mutex_lock(&mutex);
 
 	unsigned int card = getRandomCard(games[gameIndex].gameDeck.cards);
 	//printf("Selected card: %i", card);
@@ -154,7 +176,6 @@ void hit(tPlayer player, int gameIndex) {
 		games[gameIndex].player2Deck.__size++;
 	}
 
-	pthread_mutex_unlock(&mutex);
 }
 
 int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, int* result){
@@ -171,30 +192,29 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 	//iterate looking for game[i] == gaeWaitingPlayer
 	//else iterate looking for game empty
 	//modify things
-	pthread_mutex_lock(&mutex);
-
+	
 	gameIndex = iterateGames();
+	
 	if(gameIndex == MAX_GAMES) { // game is full
 		*result = ERROR_SERVER_FULL;
 	}
 	else {
 		if(games[gameIndex].status == gameEmpty) {
-			games[gameIndex].player1Name;
+			strcpy(games[gameIndex].player1Name, playerName.msg);
 			games[gameIndex].status = gameWaitingPlayer;
 		}
 		else {
-			if(playerName.msg == games[gameIndex].player1Name) { //the name is already taken
+			if(strcmp(playerName.msg, games[gameIndex].player1Name) == 0) { //the name is already taken
 				*result = ERROR_NAME_REPEATED;
 			}
 			else { //the name is not already taken in the game
-				games[gameIndex].player2Name;
+				strcpy(games[gameIndex].player2Name, playerName.msg);
 				games[gameIndex].status = gameReady;
 			}
 		}
+		// pthread_mutex_unlock(&games[gameIndex].registerMutex);
 	}
 
-
-	pthread_mutex_unlock(&mutex);
 
   	return SOAP_OK;
 }
@@ -254,7 +274,11 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	pthread_mutex_init(&mutex, NULL);
+	for(int i = 0; i< MAX_GAMES;i++) {
+		pthread_mutex_init(&games[i].registerMutex, NULL);
+		pthread_mutex_init(&games[i].statusMutex, NULL);
+	}
+	
 
 	// Init soap environment
 	soap_init(&soap);

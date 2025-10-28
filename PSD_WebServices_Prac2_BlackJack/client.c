@@ -79,8 +79,9 @@ int main(int argc, char **argv){
 	}
 
 	printf("Enter your name: ");
-	fgets(playerName.msg, STRING_LENGTH-1, stdin);
+	fgets(playerName.msg, STRING_LENGTH, stdin);
 	playerName.__size = strlen(playerName.msg);
+	playerName.msg[playerName.__size - 1] = 0;
 	
 	soap_call_blackJackns__register(&soap, serverURL, "", playerName, &resCode);
 
@@ -88,6 +89,14 @@ int main(int argc, char **argv){
   	if (soap.error) {
       	soap_print_fault(&soap, stderr); exit(1);
   	}
+
+
+
+	while(1) { //?
+
+	} 
+
+
 
 	// Clean the environment
 	soap_destroy(&soap);
