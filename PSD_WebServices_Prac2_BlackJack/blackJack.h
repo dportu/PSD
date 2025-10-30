@@ -13,6 +13,9 @@
 /** Player not found */
 #define ERROR_PLAYER_NOT_FOUND -3
 
+/** Player not found */
+#define ERROR_ACTIVE_PLAYER -4
+
 /** Action taken by the player to stand */
 #define PLAYER_STAND 0
 
@@ -73,3 +76,5 @@ typedef struct tBlock{
 }blackJackns__tBlock;
 
 int blackJackns__register  	(blackJackns__tMessage playerName, int* result);
+int blackJackns__getStatus(blackJackns__tMessage playerName, int gameIndex, blackJackns__tBlock gameStatus);
+int blackJackns__playerMove(blackJackns__tMessage playerName, int gameIndex, unsigned int move, blackJackns__tBlock playerMove);

@@ -57,6 +57,8 @@ typedef struct game{
 	// TODO: mutex de cada mutex
 	pthread_mutex_t registerMutex;
 	pthread_mutex_t statusMutex;
+	//pthread_cond_t registerCond;
+	pthread_cond_t statusCond;
 
 }tGame;
 

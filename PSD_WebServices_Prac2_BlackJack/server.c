@@ -73,17 +73,17 @@ unsigned int getRandomCard (blackJackns__tDeck* deck){
 
 	unsigned int card, cardIndex, i;
 
-		// Get a random card
-		cardIndex = rand() % deck->__size;
-		card = deck->cards[cardIndex];
+	// Get a random card
+	cardIndex = rand() % deck->__size;
+	card = deck->cards[cardIndex];
 
-		// Remove the gap
-		for (i=cardIndex; i<deck->__size-1; i++)
-			deck->cards[i] = deck->cards[i+1];
+	// Remove the gap
+	for (i=cardIndex; i<deck->__size-1; i++)
+		deck->cards[i] = deck->cards[i+1];
 
-		// Update the number of cards in the deck
-		deck->__size--;
-		deck->cards[deck->__size] = UNSET_CARD;
+	// Update the number of cards in the deck
+	deck->__size--;
+	deck->cards[deck->__size] = UNSET_CARD;
 
 	return card;
 }
@@ -157,7 +157,18 @@ void hit(tPlayer player, int gameIndex) {
 
 }
 
+void setFirstPlayer(int gameIndex) {
+	int firstActivePlayer = rand() % 2;
+	if(firstActivePlayer) {
+		games[gameIndex].currentPlayer = player2;
+	}
+	else {
+		games[gameIndex].currentPlayer = player1;	
+	}
+}
+
 int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, int* result){
+	//pthread_cond_wait del jugador 1 hasta que se registre el segundo?
 	int gameIndex;
 
 	// Set \0 at the end of the string
@@ -185,6 +196,9 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 			strcpy(games[gameIndex].player1Name, playerName.msg);
 			games[gameIndex].status = gameWaitingPlayer;
 			*result = gameIndex;
+
+			//eleccion aleatoria del primer jugador
+			setFirstPlayer(gameIndex);
 		}
 		else {
 			printf("Player 1 name: %s\n", games[gameIndex].player1Name);
@@ -206,16 +220,38 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
   	return SOAP_OK;
 }
 
-int blackJackns__getStatus(blackJackns__tMessage playerName, int gameIndex, int *result) {
+
+int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, blackJackns__tBlock gameStatus) {
+	allocClearBlock (&soap, &gameStatus);
+
+	pthread_mutex_lock(&games[gameIndex].statusMutex);
+
+	if(	(playerName.msg == games[gameIndex].player1Name && player1 == games[gameIndex].currentPlayer) ||
+		(playerName.msg == games[gameIndex].player2Name && player2 == games[gameIndex].currentPlayer)) {
+			pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
+	}
+
+	//devolvemos TURN_PLAY o TURN_WAIT si todo va bien o ERROR_ACTIVE_PLAYER en caso de algo raro o ERROR_PLAYER_NOT_FOUND si no esta en la partida
 	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
-		*result = (int)games[gameIndex].status;
+		if(playerName.msg == games[gameIndex].player1Name && player1 == games[gameIndex].currentPlayer) {
+			gameStatus.code = TURN_PLAY;
+		}
+		else if(playerName.msg == games[gameIndex].player2Name && player2 == games[gameIndex].currentPlayer){
+			gameStatus.code = TURN_WAIT;
+		}
+		else {
+			gameStatus.code = ERROR_ACTIVE_PLAYER;
+		}
 	}
 	else {
-		*result = ERROR_PLAYER_NOT_FOUND;
+		gameStatus.code = ERROR_PLAYER_NOT_FOUND;
 	}
+	pthread_mutex_unlock(&games[gameIndex].statusMutex);
 }
 
-int blackJackns__playerMove(blackJackns__tMessage playerName, int gameIndex, unsigned int move, int *result) { // ToDo
+int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, unsigned int move, blackJackns__tBlock playerMove) { // ToDo
+	allocClearBlock (&soap, &playerMove);
+
 	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
 		if (move == PLAYER_STAND) {
 
