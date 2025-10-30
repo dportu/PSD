@@ -98,10 +98,14 @@ int main(int argc, char **argv){
 
 	gameId = resCode;
 
+	gameStatus.code = TURN_WAIT;
 	while(1) { // Todo: mientras no acabe el juego
-		soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
-		// Imprimir estado del juego
-		printStatus(&gameStatus, TRUE);
+		while(gameStatus.code == TURN_WAIT) { //?
+			soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
+			// Imprimir estado del juego
+			printStatus(&gameStatus, TRUE);
+		}
+		printf("Aqui iria el playerMove\n");
 	} 
 
 
