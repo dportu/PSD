@@ -87,13 +87,18 @@ int main(int argc, char **argv){
 
 	// Check for errors...
   	if (soap.error) {
-      	soap_print_fault(&soap, stderr); exit(1);
+		printf("hay un error\n");
+      	soap_print_fault(&soap, stderr); 
+		exit(1);
   	}
 
+	if (resCode < 0) {
+		showCodeText(resCode);
+		exit(0);
+	}
 
-
-	while(1) { //?
-
+	while(1) { // Todo: mientras no acabe el juego
+		// soap_call_blackJackns__getstatus(&soap, serverURL, "", playerName, &resCode);
 	} 
 
 

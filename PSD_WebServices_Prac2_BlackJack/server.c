@@ -129,37 +129,16 @@ int iterateGames() {
 	//int waitingPlayer = FALSE;
 
 	while(i < MAX_GAMES && !found) {
-		// pthread_mutex_lock(&games[i].registerMutex);
+		pthread_mutex_lock(&games[i].registerMutex);
 		if(games[i].status != gameReady) {
 			found = TRUE;
 		}
 		else {
-			// pthread_mutex_unlock(&games[i].registerMutex);
+			pthread_mutex_unlock(&games[i].registerMutex);
 			i++;
 		}
 	}
-/*
-	printf("Comenzamos la iteracion de los games");
-	while(i < MAX_GAMES && !waitingPlayer) {
-		pthread_mutex_lock(&games[i].registerMutex);
-		if (games[i].status != gameWaitingPlayer) { // partida vacia o llena
-			if(games[i].status == gameEmpty && i < indexEmpty) { //si es la primera partida vacia que vemos la bloqueamos
-				indexEmpty = i;
-			}
-			else { // si no lo es o esta llena la desbloqueamos
-				pthread_mutex_unlock(&games[i].registerMutex);
-			}
-		}
-		else { //partida con un jugador esperando
-			if(indexEmpty != MAX_GAMES) {
-				pthread_mutex_unlock(&games[indexEmpty].registerMutex); //si teniamos una partida vacia bloqueada, la desbloqueamos 
-			}
-			indexEmpty = i;
-			waitingPlayer = TRUE;
-		}
-		i++;
-	}
-*/
+	
 	return i;
 }
 
@@ -194,27 +173,35 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 	//modify things
 	
 	gameIndex = iterateGames();
+
+	printf("Game index: %i\n", gameIndex);
 	
 	if(gameIndex == MAX_GAMES) { // game is full
 		*result = ERROR_SERVER_FULL;
 	}
 	else {
+		printf("status actual game: %i\n", games[gameIndex].status);
 		if(games[gameIndex].status == gameEmpty) {
 			strcpy(games[gameIndex].player1Name, playerName.msg);
 			games[gameIndex].status = gameWaitingPlayer;
+			*result = gameIndex;
 		}
 		else {
+			printf("Player 1 name: %s\n", games[gameIndex].player1Name);
+			printf("Player 2 name: %s\n", playerName.msg);
 			if(strcmp(playerName.msg, games[gameIndex].player1Name) == 0) { //the name is already taken
+				printf("error\n");
 				*result = ERROR_NAME_REPEATED;
 			}
 			else { //the name is not already taken in the game
 				strcpy(games[gameIndex].player2Name, playerName.msg);
 				games[gameIndex].status = gameReady;
+				*result = gameIndex;
 			}
 		}
-		// pthread_mutex_unlock(&games[gameIndex].registerMutex);
+		pthread_mutex_unlock(&games[gameIndex].registerMutex);
 	}
-
+	printf("End of register\n");
 
   	return SOAP_OK;
 }
@@ -274,12 +261,6 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	for(int i = 0; i< MAX_GAMES;i++) {
-		pthread_mutex_init(&games[i].registerMutex, NULL);
-		pthread_mutex_init(&games[i].statusMutex, NULL);
-	}
-	
-
 	// Init soap environment
 	soap_init(&soap);
 
@@ -290,6 +271,11 @@ int main(int argc, char **argv){
 	soap.max_keep_alive = 100; // max keep-alive sequence
 
 	initServerStructures(&soap);
+
+	for(int i = 0; i< MAX_GAMES;i++) {
+		pthread_mutex_init(&games[i].registerMutex, NULL);
+		pthread_mutex_init(&games[i].statusMutex, NULL);
+	}
 
 	// Get listening port
 	port = atoi(argv[1]);
