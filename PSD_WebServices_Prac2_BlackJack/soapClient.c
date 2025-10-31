@@ -17,7 +17,7 @@ A commercial use license is available from Genivia Inc., contact@genivia.com
 #endif
 #include "soapH.h"
 
-SOAP_SOURCE_STAMP("@(#) soapClient.c ver 2.8.132 2025-10-30 18:59:52 GMT")
+SOAP_SOURCE_STAMP("@(#) soapClient.c ver 2.8.132 2025-10-31 14:53:55 GMT")
 
 
 SOAP_FMAC5 int SOAP_FMAC6 soap_call_blackJackns__register(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct tMessage playerName, int *result)

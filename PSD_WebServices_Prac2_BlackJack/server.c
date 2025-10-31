@@ -227,7 +227,7 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 
 
 int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, blackJackns__tBlock *gameStatus) {
-	allocClearBlock (&soap, &gameStatus);
+	allocClearBlock (soap, gameStatus);
 
 	printf("Iniciamos el getStatus\n");
 	printf("Player 1 name at the begining of getStatus: %s\n", games[gameIndex].player1Name);
@@ -236,17 +236,17 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	printf("playerName.msg = %s\n", playerName.msg);
 	
 
-	//pthread_mutex_lock(&games[gameIndex].statusMutex);
+	pthread_mutex_lock(&games[gameIndex].statusMutex);
 
-	if(	(playerName.msg == games[gameIndex].player1Name && player1 == games[gameIndex].currentPlayer) ||
-		(playerName.msg == games[gameIndex].player2Name && player2 == games[gameIndex].currentPlayer)) {
+	if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
+    	(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 == games[gameIndex].currentPlayer)) {
 		printf("%s ha llegado a la linea 236\n", playerName.msg);
 		pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
 	}
 
 	printf("%s ha llegado a la linea 240\n");
 	//devolvemos TURN_PLAY o TURN_WAIT si todo va bien o ERROR_ACTIVE_PLAYER en caso de algo raro o ERROR_PLAYER_NOT_FOUND si no esta en la partida
-	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
+	if (strcmp(playerName.msg, games[gameIndex].player1Name) == 0 || strcmp(playerName.msg, games[gameIndex].player2Name) == 0) {
 
 		printf("%s ha llegado a la linea 243\n", playerName.msg);
 		blackJackns__tDeck *activePlayerDeck;
@@ -255,15 +255,15 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 		inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
 		//el jugador inactivo pasa a activo
-		if((playerName.msg == games[gameIndex].player1Name && player1 == games[gameIndex].currentPlayer)
-			|| (playerName.msg == games[gameIndex].player2Name && player2 == games[gameIndex].currentPlayer)) {
+		if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
+    		(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 == games[gameIndex].currentPlayer)) {
 
-			copyGameStatusStructure(&gameStatus,"Ahora eres el jugador activo\n" ,inactivePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
+			copyGameStatusStructure(gameStatus,"Ahora eres el jugador activo\n" ,inactivePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
 		}
 
 		//el jugador inactivo sigue siendo inactivo
-		else if((playerName.msg == games[gameIndex].player1Name && player2 == games[gameIndex].currentPlayer)
-				|| (playerName.msg == games[gameIndex].player1Name && player2 == games[gameIndex].currentPlayer)) {
+		else if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player2 == games[gameIndex].currentPlayer) || 
+				(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player1 == games[gameIndex].currentPlayer)) {
 			
 			copyGameStatusStructure(&gameStatus,"Sigue siendo el turno del rival\n" ,activePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
 		}
@@ -275,11 +275,14 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	else {
 		gameStatus->code = ERROR_PLAYER_NOT_FOUND;
 	}
-	//pthread_mutex_unlock(&games[gameIndex].statusMutex);
+	
+	pthread_mutex_unlock(&games[gameIndex].statusMutex);
+	
+	return SOAP_OK;
 }
 
 int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, unsigned int move, blackJackns__tBlock *playerMove) { // ToDo
-	allocClearBlock (&soap, &playerMove);
+	allocClearBlock (soap, playerMove);
 	blackJackns__tDeck *activePlayerDeck;
 	blackJackns__tDeck *inactivePlayerDeck;
 
@@ -300,10 +303,16 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 		}
 	}
 	else {
-		copyGameStatusStructure(&playerMove,"Termina de hacer el codigo de player move anda\n" ,activePlayerDeck, TURN_PLAY); 
+		copyGameStatusStructure(playerMove,"Termina de hacer el codigo de player move anda\n" ,activePlayerDeck, TURN_PLAY); 
 	}
 
+	// Cambiar el turno
+	// games[gameIndex].currentPlayer = calculateNextPlayer(games[gameIndex].currentPlayer);
+
+	// Despertar al otro jugador
 	pthread_cond_signal(&games[gameIndex].statusCond);
+
+	pthread_mutex_unlock(&games[gameIndex].statusMutex);
 
 	return SOAP_OK;
 }
@@ -350,7 +359,9 @@ int main(int argc, char **argv){
 
 	for(int i = 0; i< MAX_GAMES;i++) {
 		pthread_mutex_init(&games[i].registerMutex, NULL);
+		pthread_cond_init(&games[i].registerCond, NULL);
 		pthread_mutex_init(&games[i].statusMutex, NULL);
+		pthread_cond_init(&games[i].statusCond, NULL);
 	}
 
 	// Get listening port
@@ -395,6 +406,14 @@ int main(int argc, char **argv){
 
 	// Detach SOAP environment
 	soap_done(&soap);
+
+	// Delete threads
+	for(int i = 0; i< MAX_GAMES;i++) {
+		pthread_mutex_destroy(&games[i].registerMutex);
+		pthread_cond_destroy(&games[i].registerCond);
+		pthread_mutex_destroy(&games[i].statusMutex);
+		pthread_cond_destroy(&games[i].statusCond);
+	}
 	
 	return 0;
 }
