@@ -199,12 +199,12 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 
 			//eleccion aleatoria del primer jugador
 			setFirstPlayer(gameIndex);
+			printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player1Name : games[gameIndex].player2Name);
+
 			pthread_cond_wait(&games[gameIndex].registerCond, &games[gameIndex].registerMutex); // pthread_cond_wait para el primer jugador hasta que se registre el segundo?
 		}
 		else {
-			
 			if(strcmp(playerName.msg, games[gameIndex].player1Name) == 0) { //the name is already taken
-				printf("error\n");
 				*result = ERROR_NAME_REPEATED;
 			}
 			else { //the name is not already taken in the game
@@ -212,16 +212,13 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 				games[gameIndex].status = gameReady;
 				*result = gameIndex;
 
-				printf("Player 1 name: %s\n", games[gameIndex].player1Name);
-				printf("Player 2 name: %s\n", playerName.msg);
+				pthread_cond_signal(&games[gameIndex].registerCond); // Despierta al jugador 1
 			}
 		}
 		pthread_mutex_unlock(&games[gameIndex].registerMutex);
 	}
 	printf("End of register\n");
 
-	printf("Player 1 name at the end of register: %s\n", games[gameIndex].player1Name);
-	printf("Player 2 name at the end of register: %s\n", games[gameIndex].player2Name);
   	return SOAP_OK;
 }
 
@@ -230,34 +227,27 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	allocClearBlock (soap, gameStatus);
 
 	printf("Iniciamos el getStatus\n");
-	printf("Player 1 name at the begining of getStatus: %s\n", games[gameIndex].player1Name);
-	printf("Player 2 name at the begining of getStatus: %s\n", games[gameIndex].player2Name);
-
-	printf("playerName.msg = %s\n", playerName.msg);
-	
 
 	pthread_mutex_lock(&games[gameIndex].statusMutex);
 
-	if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
+	while ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
     	(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 == games[gameIndex].currentPlayer)) {
-		printf("%s ha llegado a la linea 236\n", playerName.msg);
+		printf("%s waiting...\n", playerName.msg);
 		pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
+		printf("%s woke up...\n", playerName.msg);
 	}
 
-	printf("%s ha llegado a la linea 240\n");
 	//devolvemos TURN_PLAY o TURN_WAIT si todo va bien o ERROR_ACTIVE_PLAYER en caso de algo raro o ERROR_PLAYER_NOT_FOUND si no esta en la partida
 	if (strcmp(playerName.msg, games[gameIndex].player1Name) == 0 || strcmp(playerName.msg, games[gameIndex].player2Name) == 0) {
 
-		printf("%s ha llegado a la linea 243\n", playerName.msg);
 		blackJackns__tDeck *activePlayerDeck;
 		blackJackns__tDeck *inactivePlayerDeck;
 		activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
 		inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
 		//el jugador inactivo pasa a activo
-		if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
-    		(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 == games[gameIndex].currentPlayer)) {
-
+		if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 != games[gameIndex].currentPlayer) ||
+    		(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 != games[gameIndex].currentPlayer)) {
 			copyGameStatusStructure(gameStatus,"Ahora eres el jugador activo\n" ,inactivePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
 		}
 
@@ -265,7 +255,7 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 		else if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player2 == games[gameIndex].currentPlayer) || 
 				(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player1 == games[gameIndex].currentPlayer)) {
 			
-			copyGameStatusStructure(&gameStatus,"Sigue siendo el turno del rival\n" ,activePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
+			copyGameStatusStructure(gameStatus,"Sigue siendo el turno del rival\n" ,activePlayerDeck, TURN_WAIT); //le mandamos el deck del otro jugador ?
 		}
 		
 		else {
@@ -321,7 +311,7 @@ void *processRequest(void *soap){
 
 	pthread_detach(pthread_self());
 
-	printf ("Processing a new request...");
+	printf ("Processing a new request...\n");
 
 	soap_serve((struct soap*)soap);
 	soap_destroy((struct soap*)soap);

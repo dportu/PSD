@@ -106,6 +106,7 @@ int main(int argc, char **argv){
 			printStatus(&gameStatus, TRUE);
 		}
 		printf("Aqui iria el playerMove\n");
+
 	} 
 
 
