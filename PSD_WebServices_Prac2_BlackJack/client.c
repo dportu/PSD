@@ -62,6 +62,8 @@ int main(int argc, char **argv){
 	unsigned int playerMove;			/** Player's move */
 	int resCode, gameId;				/** Result and gameId */
 	
+	blackJackns__tBlock playerMoveBlock; // playerMove return variable ??
+	
 	// Init gSOAP environment
 	soap_init(&soap);
 
@@ -101,12 +103,19 @@ int main(int argc, char **argv){
 	gameStatus.code = TURN_WAIT;
 	while(1) { // Todo: mientras no acabe el juego
 		while(gameStatus.code == TURN_WAIT) { //?
+			printf("Soy el jugador inactivo\n");
+			allocClearBlock(&soap, &gameStatus); // ?
 			soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
 			// Imprimir estado del juego
 			printStatus(&gameStatus, TRUE);
 		}
-		printf("Aqui iria el playerMove\n");
-
+		do {
+			printf("Aqui iria el playerMove\n");
+			playerMove = readOption();
+			allocClearBlock(&soap, &playerMoveBlock);
+			soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &playerMoveBlock);
+			printf("%s\n", playerMoveBlock.msgStruct);
+		} while(playerMoveBlock.code == TURN_PLAY);
 	} 
 
 

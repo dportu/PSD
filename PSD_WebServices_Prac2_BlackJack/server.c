@@ -105,10 +105,16 @@ unsigned int calculatePoints (blackJackns__tDeck *deck){
 
 void copyGameStatusStructure (blackJackns__tBlock* status, char* message, blackJackns__tDeck *newDeck, int newCode){
 
+	printf("%s\n",message);
 	// Copy the message
+    if (!status->msgStruct.msg) return; 
+
 	memset((status->msgStruct).msg, 0, STRING_LENGTH);
 	strcpy ((status->msgStruct).msg, message);
 	(status->msgStruct).__size = strlen ((status->msgStruct).msg);
+
+	//esto peta
+	//printf("%s\n",status->msgStruct);
 
 	// Copy the deck, only if it is not NULL
 	if (newDeck->__size > 0)
@@ -144,7 +150,7 @@ int iterateGames() {
 
 void hit(tPlayer player, int gameIndex) {
 
-	unsigned int card = getRandomCard(games[gameIndex].gameDeck.cards);
+	unsigned int card = getRandomCard(&games[gameIndex].gameDeck);
 	//printf("Selected card: %i", card);
 	if(player == player1) {
 		games[gameIndex].player1Deck.cards[games[gameIndex].player1Deck.__size] = card;
@@ -275,25 +281,38 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 	allocClearBlock (soap, playerMove);
 	blackJackns__tDeck *activePlayerDeck;
 	blackJackns__tDeck *inactivePlayerDeck;
+	unsigned int resultCode;
 
 	pthread_mutex_lock(&games[gameIndex].statusMutex); //mutex lock
 
 	activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
 	inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
-	if(playerName.msg == games[gameIndex].player1Name || playerName.msg == games[gameIndex].player2Name) {
+	if(strcmp(playerName.msg, games[gameIndex].player1Name) || strcmp(playerName.msg, games[gameIndex].player2Name)) {
 		if (move == PLAYER_STAND) {
-
+			resultCode = TURN_WAIT;
+			copyGameStatusStructure(playerMove,"Has realizado un stand\n" ,activePlayerDeck, resultCode);
+			games[gameIndex].currentPlayer = calculateNextPlayer(games[gameIndex].currentPlayer);
 		}
 		else if (move == PLAYER_HIT_CARD) {
-
+			tPlayer hitPlayer = (games[gameIndex].currentPlayer == player1) ? player1 : player2; //creo
+			hit(hitPlayer, gameIndex);
+			if(calculatePoints(activePlayerDeck) > 21) {
+				resultCode = TURN_WAIT;
+			}
+			else {
+				resultCode = TURN_PLAY;
+			}
+			copyGameStatusStructure(playerMove,"Has realizado un hit\n" ,activePlayerDeck, resultCode); 
 		}
 		else {
-
+			resultCode = ERROR_ACTIVE_PLAYER;
+			copyGameStatusStructure(playerMove,"Creo que ha habido un error\n" ,activePlayerDeck, resultCode); 
 		}
 	}
 	else {
-		copyGameStatusStructure(playerMove,"Termina de hacer el codigo de player move anda\n" ,activePlayerDeck, TURN_PLAY); 
+		resultCode = ERROR_PLAYER_NOT_FOUND;
+		copyGameStatusStructure(playerMove,"No se ha encontrado al jugador en la partida\n" ,activePlayerDeck, resultCode); 
 	}
 
 	// Cambiar el turno
