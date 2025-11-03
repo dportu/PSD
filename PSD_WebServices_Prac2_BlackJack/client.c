@@ -62,7 +62,6 @@ int main(int argc, char **argv){
 	unsigned int playerMove;			/** Player's move */
 	int resCode, gameId;				/** Result and gameId */
 	
-	blackJackns__tBlock playerMoveBlock; // playerMove return variable ??
 	
 	// Init gSOAP environment
 	soap_init(&soap);
@@ -109,13 +108,14 @@ int main(int argc, char **argv){
 			// Imprimir estado del juego
 			printStatus(&gameStatus, TRUE);
 		}
-		do {
+		while(gameStatus.code == TURN_PLAY) {
 			printf("Aqui iria el playerMove\n");
 			playerMove = readOption();
-			allocClearBlock(&soap, &playerMoveBlock);
-			soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &playerMoveBlock);
-			printf("%s\n", playerMoveBlock.msgStruct);
-		} while(playerMoveBlock.code == TURN_PLAY);
+			allocClearBlock(&soap, &gameStatus);
+			soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
+			printStatus(&gameStatus, DEBUG_CLIENT);
+			showCodeText(gameStatus.code);
+		} 
 	} 
 
 

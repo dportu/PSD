@@ -165,6 +165,7 @@ void hit(tPlayer player, int gameIndex) {
 
 void setFirstPlayer(int gameIndex) {
 	int firstActivePlayer = rand() % 2;
+	printf("First active player = %d\n", firstActivePlayer);
 	if(firstActivePlayer) {
 		games[gameIndex].currentPlayer = player2;
 	}
@@ -205,7 +206,7 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 
 			//eleccion aleatoria del primer jugador
 			setFirstPlayer(gameIndex);
-			printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player1Name : games[gameIndex].player2Name);
+			printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player2Name : games[gameIndex].player1Name);
 
 			pthread_cond_wait(&games[gameIndex].registerCond, &games[gameIndex].registerMutex); // pthread_cond_wait para el primer jugador hasta que se registre el segundo?
 		}
@@ -236,12 +237,21 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 
 	pthread_mutex_lock(&games[gameIndex].statusMutex);
 
-	while ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
+
+	playerName.msg[playerName.__size - 1] = 0;
+
+	/*while ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 == games[gameIndex].currentPlayer) ||
     	(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 == games[gameIndex].currentPlayer)) {
-		printf("%s waiting...\n", playerName.msg);
-		pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
-		printf("%s woke up...\n", playerName.msg);
-	}
+		
+	}*/
+
+	if( ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0) && (games[gameIndex].currentPlayer != player1)) ||
+    	((strcmp(playerName.msg, games[gameIndex].player2Name) == 0) && (games[gameIndex].currentPlayer != player2)) ) {
+			printf("%s is waiting...\n", playerName.msg);
+
+			pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
+			printf("%s woke up...\n", playerName.msg);
+		}
 
 	//devolvemos TURN_PLAY o TURN_WAIT si todo va bien o ERROR_ACTIVE_PLAYER en caso de algo raro o ERROR_PLAYER_NOT_FOUND si no esta en la partida
 	if (strcmp(playerName.msg, games[gameIndex].player1Name) == 0 || strcmp(playerName.msg, games[gameIndex].player2Name) == 0) {
@@ -251,17 +261,40 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 		activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
 		inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
+
+		printf("DEBUG:\n");
+		printf("playerName.msg = '%s'\n", playerName.msg);
+		printf("player1Name = '%s'\n", games[gameIndex].player1Name);
+		printf("player2Name = '%s'\n", games[gameIndex].player2Name);
+		printf("currentPlayer = %d\n", games[gameIndex].currentPlayer);
+		printf("player1 = %d\n", player1);
+		printf("player2 = %d\n", player2);
+
+		printf("strcmp(playerName.msg, player1Name) = %d\n", strcmp(playerName.msg, games[gameIndex].player1Name));
+		printf("strcmp(playerName.msg, player2Name) = %d\n", strcmp(playerName.msg, games[gameIndex].player2Name));
+		printf("Game index: %d\n", gameIndex);
+
+
+		/*
+		printf("Player message: [%s]\n", playerName.msg);
+		printf("Player active: %i\n", games[gameIndex].currentPlayer);
+		printf("strcmp de player 1: %d\n", strcmp(playerName.msg, games[gameIndex].player1Name));
+		printf("strcmp de player 2: %d\n", strcmp(playerName.msg, games[gameIndex].player2Name));*/
 		//el jugador inactivo pasa a activo
-		if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player1 != games[gameIndex].currentPlayer) ||
-    		(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player2 != games[gameIndex].currentPlayer)) {
+		if ( ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0) && (games[gameIndex].currentPlayer == player1)) ||
+			 ((strcmp(playerName.msg, games[gameIndex].player2Name) == 0) && (games[gameIndex].currentPlayer == player2)) ) {
 			copyGameStatusStructure(gameStatus,"Ahora eres el jugador activo\n" ,inactivePlayerDeck, TURN_PLAY); //le mandamos el deck del otro jugador ?
 		}
 
 		//el jugador inactivo sigue siendo inactivo
-		else if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && player2 == games[gameIndex].currentPlayer) || 
-				(strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && player1 == games[gameIndex].currentPlayer)) {
-			
-			copyGameStatusStructure(gameStatus,"Sigue siendo el turno del rival\n" ,activePlayerDeck, TURN_WAIT); //le mandamos el deck del otro jugador ?
+		else if ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0 && (games[gameIndex].currentPlayer != player1)) || 
+				 (strcmp(playerName.msg, games[gameIndex].player2Name) == 0 && (games[gameIndex].currentPlayer != player2)) ) {
+			// Show points
+			//xsd__string replyMessage;
+			//sprintf(replyMessage, "Sigue siendo el turno del rival\nPoints: %d", calculatePoints(activePlayerDeck));
+			char replyMessage[64];
+			sprintf(replyMessage, "Sigue siendo el turno del rival\nPoints: %d", calculatePoints(activePlayerDeck));
+			copyGameStatusStructure(gameStatus, replyMessage, activePlayerDeck, TURN_WAIT);
 		}
 		
 		else {
@@ -277,33 +310,86 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	return SOAP_OK;
 }
 
+
+unsigned int winner(unsigned int points1, unsigned int points2) {
+	// Ambos se pasan o empatan, nadie gana
+    if ((points1 > 21 && points2 > 21) || (points1 == points2))
+        return 0;
+
+    // Si uno se pasa, gana el otro
+    if (points1 > 21) {
+		return 2;
+	}
+    if (points2 > 21) {
+		return 1;
+	}
+
+    // Ninguno se pasa, gana el que más puntos tenga
+	if (points1 > points2) {
+		return 1;
+	}
+    else {
+		return 2;
+	}
+}
+
 int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, unsigned int move, blackJackns__tBlock *playerMove) { // ToDo
 	allocClearBlock (soap, playerMove);
 	blackJackns__tDeck *activePlayerDeck;
 	blackJackns__tDeck *inactivePlayerDeck;
 	unsigned int resultCode;
+	unsigned int rondaFinal = FALSE; // El primer jugador de la partida ya ha jugado
 
 	pthread_mutex_lock(&games[gameIndex].statusMutex); //mutex lock
 
 	activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
 	inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
-	if(strcmp(playerName.msg, games[gameIndex].player1Name) || strcmp(playerName.msg, games[gameIndex].player2Name)) {
-		if (move == PLAYER_STAND) {
+	// Comprobamos si es la primera jugada de la ronda
+	if(activePlayerDeck->__size == 0) {
+		hit(games[gameIndex].currentPlayer, gameIndex);
+		hit(games[gameIndex].currentPlayer, gameIndex);
+	}
+
+	// Comprobamos si el otro jugador ya ha jugado 
+	if(inactivePlayerDeck->__size != 0) {
+		rondaFinal = TRUE;
+	}
+
+
+
+	// Si el jugador pertenece a la partida
+	if(strcmp(playerName.msg, games[gameIndex].player1Name) == 0 || strcmp(playerName.msg, games[gameIndex].player2Name) == 0) {
+		if (move == PLAYER_STAND) { // Player stand
 			resultCode = TURN_WAIT;
-			copyGameStatusStructure(playerMove,"Has realizado un stand\n" ,activePlayerDeck, resultCode);
+			
 			games[gameIndex].currentPlayer = calculateNextPlayer(games[gameIndex].currentPlayer);
+			if(rondaFinal) {
+				int roundWinner = winner( calculatePoints(&games[gameIndex].player1Deck), calculatePoints(&games[gameIndex].player2Deck) );
+				if (roundWinner == 1) {
+
+				}
+			}
+
+			copyGameStatusStructure(playerMove,"Has realizado un stand\n" ,activePlayerDeck, resultCode);
 		}
-		else if (move == PLAYER_HIT_CARD) {
-			tPlayer hitPlayer = (games[gameIndex].currentPlayer == player1) ? player1 : player2; //creo
+		else if (move == PLAYER_HIT_CARD) { // Player hit
+			tPlayer hitPlayer = (games[gameIndex].currentPlayer == player1) ? player1 : player2;
 			hit(hitPlayer, gameIndex);
-			if(calculatePoints(activePlayerDeck) > 21) {
+
+			if(calculatePoints(activePlayerDeck) > 21) { // Si el jugador se pasa de 21
 				resultCode = TURN_WAIT;
+				games[gameIndex].currentPlayer = calculateNextPlayer(games[gameIndex].currentPlayer);
+				if(rondaFinal) {
+					
+				}
 			}
 			else {
 				resultCode = TURN_PLAY;
 			}
-			copyGameStatusStructure(playerMove,"Has realizado un hit\n" ,activePlayerDeck, resultCode); 
+			char replyMessage[64];
+			sprintf(replyMessage, "Has realizado un hit\nPoints: %d", calculatePoints(activePlayerDeck));
+			copyGameStatusStructure(playerMove,replyMessage ,activePlayerDeck, resultCode); 
 		}
 		else {
 			resultCode = ERROR_ACTIVE_PLAYER;

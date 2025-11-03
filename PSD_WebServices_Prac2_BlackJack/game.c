@@ -51,6 +51,10 @@ void showCodeText (unsigned int code){
                 strcpy (string, "ERROR_SERVER_FULL");
                 break;
 
+			case ERROR_ACTIVE_PLAYER:
+				strcpy (string, "ERROR_ACTIVE_PLAYER");
+				break;
+
 			default:
 				strcpy (string, "UNKNOWN CODE");
 				break;
@@ -166,8 +170,11 @@ void printStatus (blackJackns__tBlock *status, int debug){
 	// Set end of message
 	(status->msgStruct).msg[(status->msgStruct).__size] = 0;
 
+	
 	// Show message received from server
 	printf ("%s\n", (status->msgStruct).msg);
+
+	
 
 	// Show deck
 	printFancyDeck (&(status->deck));
