@@ -100,7 +100,7 @@ int main(int argc, char **argv){
 	gameId = resCode;
 
 	gameStatus.code = TURN_WAIT;
-	while(1) { // Todo: mientras no acabe el juego
+	while(gameStatus.code != GAME_LOSE || gameStatus.code != GAME_WIN) { // Todo: mientras no acabe el juego
 		while(gameStatus.code == TURN_WAIT) { //?
 			printf("Soy el jugador inactivo\n");
 			allocClearBlock(&soap, &gameStatus); // ?
@@ -109,7 +109,6 @@ int main(int argc, char **argv){
 			printStatus(&gameStatus, TRUE);
 		}
 		while(gameStatus.code == TURN_PLAY) {
-			printf("Aqui iria el playerMove\n");
 			playerMove = readOption();
 			allocClearBlock(&soap, &gameStatus);
 			soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
