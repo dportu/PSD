@@ -11,10 +11,10 @@
 #define MAX_GAMES 2
 
 /** Initial stack for each player */
-#define INITIAL_STACK 1
+#define INITIAL_STACK 2
 
 /** Default bet */
-#define DEFAULT_BET 3
+#define DEFAULT_BET 1
 
 /** Number of points to win the game */
 #define GOAL_GAME 21

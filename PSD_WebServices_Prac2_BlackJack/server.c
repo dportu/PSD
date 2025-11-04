@@ -199,10 +199,10 @@ unsigned int winner(unsigned int points1, unsigned int points2) {
 int checkStacks(int gameIndex) {
 	int loser = 0;
 	
-	if(games[gameIndex].player1Stack == 0)  {
+	if(games[gameIndex].player1Stack <= 0)  {
 		loser = 1;
 	}
-	else if(games[gameIndex].player2Stack == 0)  {
+	else if(games[gameIndex].player2Stack <= 0)  {
 		loser = 2;
 	}
 
@@ -242,6 +242,12 @@ int endRound(int gameIndex) {
 		// Reseteamos los bets de los jugadores
 		games[gameIndex].player1Bet = FALSE;
         games[gameIndex].player2Bet = FALSE;
+
+		// Repartimos nuevas cartas a los jugadores
+		//hit(player1, gameIndex);
+        //hit(player1, gameIndex);
+        //hit(player2, gameIndex);
+        //hit(player2, gameIndex);
 
 	}
 
@@ -299,6 +305,9 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 	else {
 		printf("Status of current game: %i\n", games[gameIndex].status);
 		if(games[gameIndex].status == gameEmpty) {
+
+			initGame(&games[gameIndex]); // REsetear por si hubo una partida anterior
+
 			strcpy(games[gameIndex].player1Name, playerName.msg);
 			games[gameIndex].status = gameWaitingPlayer;
 			*result = gameIndex;
@@ -401,8 +410,10 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 			else {
 				sprintf(replyMessage, "You Lose :(\n");
 			}
-			
-			initGame(&games[gameIndex]); // reseteamos el game ??
+
+			// Resetear game
+			games[gameIndex].status = gameEmpty;
+
 			copyGameStatusStructure(gameStatus, replyMessage, activePlayerDeck, resultCode);
 		}
 		// El jugador pasa a ser el activo
@@ -421,8 +432,6 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 		gameStatus->code = ERROR_PLAYER_NOT_FOUND;
 	}
 
-	
-
 	// Mutex unlock
 	pthread_mutex_unlock(&games[gameIndex].statusMutex);
 	
@@ -438,12 +447,10 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 
 	pthread_mutex_lock(&games[gameIndex].statusMutex); //mutex lock
 
-	activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
-	inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
+	tPlayer movingPlayer = games[gameIndex].currentPlayer;
 
-	
-
-
+	activePlayerDeck = (movingPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
+	inactivePlayerDeck = (movingPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
 	int auxCode;
 	// Si el jugador pertenece a la partida
@@ -453,9 +460,10 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 
 			// Comprobamos si alguien ha perdido
 			if(endRound(gameIndex)) {
-				auxCode = endGame(gameIndex, games[gameIndex].currentPlayer);
+				auxCode = endGame(gameIndex, movingPlayer);
 				if(auxCode) {
 					resultCode = auxCode;
+					games[gameIndex].status = gameEmpty; // liberamos la partida
 				}
 			}
 
@@ -473,6 +481,7 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 					auxCode = endGame(gameIndex, games[gameIndex].currentPlayer);
 					if(auxCode) {
 						resultCode = auxCode;
+						games[gameIndex].status = gameEmpty; // liberamos la partida
 					}
 				}
 			}
