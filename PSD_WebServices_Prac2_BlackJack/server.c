@@ -209,7 +209,7 @@ int checkStacks(int gameIndex) {
 	return loser; // Devolvemos el perdedor o 0 si nadie pierde
 }
 
-int endRound(int gameIndex) {
+int endRound(int gameIndex, char str[]) {
 	int endOfRound = FALSE;
 	
 	if(games[gameIndex].currentPlayer == player1) {
@@ -227,10 +227,15 @@ int endRound(int gameIndex) {
 		if(roundWinner == 1) {
 			games[gameIndex].player1Stack += DEFAULT_BET;
 			games[gameIndex].player2Stack -= DEFAULT_BET;
+			strcpy(str, "Player 1 wins");
 		}
 		else if(roundWinner == 2) {
 			games[gameIndex].player2Stack += DEFAULT_BET;
 			games[gameIndex].player1Stack -= DEFAULT_BET;
+			strcpy(str, "Player 2 wins");
+		}
+		else {
+			strcpy(str, "Draw");
 		}
 
 
@@ -244,10 +249,10 @@ int endRound(int gameIndex) {
         games[gameIndex].player2Bet = FALSE;
 
 		// Repartimos nuevas cartas a los jugadores
-		//hit(player1, gameIndex);
-        //hit(player1, gameIndex);
-        //hit(player2, gameIndex);
-        //hit(player2, gameIndex);
+		hit(player1, gameIndex);
+        hit(player1, gameIndex);
+        hit(player2, gameIndex);
+        hit(player2, gameIndex);
 
 	}
 
@@ -257,26 +262,27 @@ int endRound(int gameIndex) {
 	return endOfRound; // Devolvemos si la ronda ha finalizado
 }
 
-unsigned int endGame (int gameIndex, tPlayer player) {
-	int stacks = checkStacks(gameIndex);
-	unsigned int code;
+void closeGame(gameIndex){
+	pthread_mutex_lock(&games[gameIndex].registerMutex);
+	games[gameIndex].status = gameEmpty; // liberamos la partida
+	pthread_mutex_unlock(&games[gameIndex].registerMutex);
+}
 
-	if(stacks) {
-		if (stacks == 1 && player == player1) {
-			code = GAME_LOSE;
-		}
-		else if (stacks == 2 && player == player2) {
-			code = GAME_LOSE;
-		}
-		else {
-			code = GAME_WIN;
-		}
-	}
-	else {
-		code = FALSE;
-	}
+unsigned int endGame(int gameIndex, tPlayer player) {
+    int stacks = checkStacks(gameIndex);
+    unsigned int code = FALSE;  // Valor por defecto: nadie ganó ni perdió
 
-	return code;
+    if (stacks != 0) {
+        // stacks == 1 si pierde player1
+        // stacks == 2 si pierde player2
+        if ((stacks == 1 && player == player1) || (stacks == 2 && player == player2)) {
+            code = GAME_LOSE;
+        } else {
+            code = GAME_WIN;
+        }
+    }
+
+    return code; // FALSE si nadie pierde, o GAME_LOSE / GAME_WIN
 }
 
 int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, int* result){
@@ -312,6 +318,11 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 			games[gameIndex].status = gameWaitingPlayer;
 			*result = gameIndex;
 
+			// Hacemos el doble hit inicial
+			printf("%s draws two cards\n", playerName.msg);
+			hit(player1, gameIndex);
+			hit(player1, gameIndex);
+
 			pthread_cond_wait(&games[gameIndex].registerCond, &games[gameIndex].registerMutex); // pthread_cond_wait para el primer jugador hasta que se registre el segundo
 		}
 		else {
@@ -323,12 +334,18 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 				games[gameIndex].status = gameReady;
 				*result = gameIndex;
 
+				// Hacemos el doble hit inicial
+				printf("%s draws two cards\n", playerName.msg);
+				hit(player2, gameIndex);
+				hit(player2, gameIndex);
+
 				//eleccion aleatoria del primer jugador
 				setFirstPlayer(gameIndex);
 				printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player2Name : games[gameIndex].player1Name);
 
 				pthread_cond_signal(&games[gameIndex].registerCond); // Despierta al jugador 1
 			}
+			
 		}
 		pthread_mutex_unlock(&games[gameIndex].registerMutex);
 	}
@@ -337,6 +354,30 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
   	return SOAP_OK;
 }
 
+void statusEndRound(char endRoundString[], tPlayer statusPlayer, int gameIndex, int previousStack) {
+	if(statusPlayer == player1) {
+		if(games[gameIndex].player1Stack > previousStack ) {
+			sprintf(endRoundString, "You won the round !!\n");
+		}
+		else if(games[gameIndex].player1Stack < previousStack) {
+			sprintf(endRoundString, "You lost the round :(\n");
+		}
+		else{
+			sprintf(endRoundString, "It's a draw\n");
+		}
+	}
+	else {
+		if(games[gameIndex].player2Stack > previousStack ) {
+			sprintf(endRoundString, "You won the round !!\n");
+		}
+		else if(games[gameIndex].player2Stack < previousStack) {
+			sprintf(endRoundString, "You lost the round :(\n");
+		}
+		else{
+			sprintf(endRoundString, "It's a draw\n");
+		}
+	}
+}
 
 int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, blackJackns__tBlock *gameStatus) {
 	allocClearBlock (soap, gameStatus);
@@ -346,23 +387,20 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	pthread_mutex_lock(&games[gameIndex].statusMutex);
 
 
+	playerName.msg[playerName.__size - 1] = 0;
+
+	int firstRound = !games[gameIndex].player1Bet && !games[gameIndex].player2Bet;
+
 	tPlayer statusPlayer; // Player que esta pidiendo el servico getStatus
+	int previousStack;
 	if((strcmp(playerName.msg, games[gameIndex].player1Name) == 0)) {
 		statusPlayer = player1;
+		previousStack = games[gameIndex].player1Stack;
 	}
 	else {
 		statusPlayer = player2;
+		previousStack = games[gameIndex].player2Stack;
 	}
-
-
-	// Hacemos el doble hit inicial
-	if( (statusPlayer == player1 && games[gameIndex].player1Deck.__size == 0) || (statusPlayer == player2 && games[gameIndex].player2Deck.__size == 0) ) {
-		printf("Doble hit de %d chaval\n", statusPlayer);
-		hit(statusPlayer, gameIndex);
-		hit(statusPlayer, gameIndex);
-	}
-
-	playerName.msg[playerName.__size - 1] = 0;
 
 	if( ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0) && (games[gameIndex].currentPlayer != player1)) ||
     	((strcmp(playerName.msg, games[gameIndex].player2Name) == 0) && (games[gameIndex].currentPlayer != player2)) ) {
@@ -379,52 +417,43 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 		activePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player1Deck : &games[gameIndex].player2Deck;
 		inactivePlayerDeck = (games[gameIndex].currentPlayer == player1) ? &games[gameIndex].player2Deck : &games[gameIndex].player1Deck;
 
-
-
-		/*printf("DEBUG:\n");
-		printf("playerName.msg = '%s'\n", playerName.msg);
-		printf("player1Name = '%s'\n", games[gameIndex].player1Name);
-		printf("player2Name = '%s'\n", games[gameIndex].player2Name);
-		printf("currentPlayer = %d\n", games[gameIndex].currentPlayer);
-		printf("player1 = %d\n", player1);
-		printf("player2 = %d\n", player2);
-
-		printf("strcmp(playerName.msg, player1Name) = %d\n", strcmp(playerName.msg, games[gameIndex].player1Name));
-		printf("strcmp(playerName.msg, player2Name) = %d\n", strcmp(playerName.msg, games[gameIndex].player2Name));
-		printf("Game index: %d\n", gameIndex);*/
-
-
 		unsigned int resultCode;
 		
 
 		// Loser = 0 si nadie pierde
 		// Loser = gameWin en caso de que pierda el otro
 		// Loser = gameLose en caso de que pierda statusPlayer
+		
 		unsigned int loser = endGame(gameIndex, statusPlayer);
 		if(loser) { // Si alguien ha perdido
 			resultCode = loser;
-			char replyMessage[64];
-			if(resultCode == GAME_WIN) {
-				sprintf(replyMessage, "You win !!\n");
-			}
-			else {
-				sprintf(replyMessage, "You Lose :(\n");
-			}
-
-			// Resetear game
-			games[gameIndex].status = gameEmpty;
-
+			char replyMessage[64] = "";
+			
 			copyGameStatusStructure(gameStatus, replyMessage, activePlayerDeck, resultCode);
+			closeGame(gameIndex);
 		}
 		// El jugador pasa a ser el activo
 		else if (statusPlayer == games[gameIndex].currentPlayer) {
-			copyGameStatusStructure(gameStatus,"Ahora eres el jugador activo\n" ,activePlayerDeck, TURN_PLAY); 
+
+			// Informamos del resultado de la ronda
+			char endRoundString[32] = "";
+			if(!firstRound && (!games[gameIndex].player1Bet && !games[gameIndex].player1Bet)) {
+				statusEndRound(endRoundString, statusPlayer, gameIndex, previousStack);
+			}
+			
+			
+			char replyMessage[64];
+			sprintf(replyMessage, "%s\nYour Deck's Points: %d\n", endRoundString, calculatePoints(activePlayerDeck));
+			copyGameStatusStructure(gameStatus, replyMessage,activePlayerDeck, TURN_PLAY); 
 		}
 		//el jugador inactivo sigue siendo inactivo
 		else {
-			
+			char endRoundString[32] = "";
+			if(!firstRound && (!games[gameIndex].player1Bet && !games[gameIndex].player1Bet) ) {
+				statusEndRound(endRoundString, statusPlayer, gameIndex, previousStack);
+			}
 			char replyMessage[64];
-			sprintf(replyMessage, "Points del rival: %d", calculatePoints(activePlayerDeck));
+			sprintf(replyMessage, "%s\nRival's Points: %d\n", endRoundString, calculatePoints(activePlayerDeck));
 			copyGameStatusStructure(gameStatus, replyMessage, activePlayerDeck, TURN_WAIT);
 		}
 	}
@@ -437,6 +466,9 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	
 	return SOAP_OK;
 }
+
+ 
+
 
 //TODO REINICIAR LOS DECKS DESPUES DE CADA RONDA (AL ELEGIR QUIEN GANA LA RONDA) , TAMBIEN CORREGIR EL WINNER QUE NO VA BIEN
 int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName, int gameIndex, unsigned int move, blackJackns__tBlock *playerMove) {
@@ -458,30 +490,38 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 		if (move == PLAYER_STAND) { // Player stand
 			resultCode = TURN_WAIT;
 
+			char replyMessage[64];
+			char endRoundString[32] = "";
+
 			// Comprobamos si alguien ha perdido
-			if(endRound(gameIndex)) {
+			if(endRound(gameIndex, endRoundString)) {
 				auxCode = endGame(gameIndex, movingPlayer);
 				if(auxCode) {
 					resultCode = auxCode;
-					games[gameIndex].status = gameEmpty; // liberamos la partida
+					//closeGame(gameIndex);
 				}
 			}
 
-			copyGameStatusStructure(playerMove,"Has realizado un stand\n" ,activePlayerDeck, resultCode);
+			
+			sprintf(replyMessage, "%s\nPoints: %d\nYou've done a stand\n", endRoundString, calculatePoints(activePlayerDeck));
+			copyGameStatusStructure(playerMove, replyMessage ,activePlayerDeck, resultCode);
 		}
 		else if (move == PLAYER_HIT_CARD) { // Player hit
 			tPlayer hitPlayer = (games[gameIndex].currentPlayer == player1) ? player1 : player2;
 			hit(hitPlayer, gameIndex);
+			char endRoundString[64] = "";
 
 			if(calculatePoints(activePlayerDeck) > 21) { // Si el jugador se pasa de 21
 				resultCode = TURN_WAIT;
 
+				
 				// Comprobamos si alguien ha perdido
-				if(endRound(gameIndex)) {
+				if(endRound(gameIndex, endRoundString)) {
 					auxCode = endGame(gameIndex, games[gameIndex].currentPlayer);
 					if(auxCode) {
 						resultCode = auxCode;
-						games[gameIndex].status = gameEmpty; // liberamos la partida
+
+						//closeGame(gameIndex); // Cerramos la partida
 					}
 				}
 			}
@@ -489,7 +529,7 @@ int blackJackns__playerMove(struct soap *soap, blackJackns__tMessage playerName,
 				resultCode = TURN_PLAY;
 			}
 			char replyMessage[64];
-			sprintf(replyMessage, "Has realizado un hit\nPoints: %d", calculatePoints(activePlayerDeck));
+			sprintf(replyMessage, "%s\nHas realizado un hit\nPoints: %d", endRoundString, calculatePoints(activePlayerDeck));
 			copyGameStatusStructure(playerMove,replyMessage ,activePlayerDeck, resultCode); 
 		}
 		else {

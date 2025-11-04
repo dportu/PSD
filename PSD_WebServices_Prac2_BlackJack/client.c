@@ -85,7 +85,7 @@ int main(int argc, char **argv){
 	playerName.msg[playerName.__size - 1] = 0;
 	
 	soap_call_blackJackns__register(&soap, serverURL, "", playerName, &resCode);
-
+    
 	// Check for errors...
   	if (soap.error) {
       	soap_print_fault(&soap, stderr); 
@@ -100,20 +100,39 @@ int main(int argc, char **argv){
 	gameId = resCode;
 
 	gameStatus.code = TURN_WAIT;
-	while(gameStatus.code != GAME_LOSE && gameStatus.code != GAME_WIN) { // Todo: mientras no acabe el juego
-		while(gameStatus.code == TURN_WAIT) { //?
-			printf("Soy el jugador inactivo\n");
-			allocClearBlock(&soap, &gameStatus); // ?
+	while(gameStatus.code != GAME_LOSE && gameStatus.code != GAME_WIN) {
+		// Bucle jugador inactiva
+		while(gameStatus.code == TURN_WAIT) { 
+			allocClearBlock(&soap, &gameStatus); 
 			soap_call_blackJackns__getStatus(&soap, serverURL, "", playerName, gameId, &gameStatus);
+			
 			// Imprimir estado del juego
-			printStatus(&gameStatus, TRUE);
+			if(gameStatus.code == GAME_LOSE) {
+				printf("You Lose :(\n");
+			}
+			else if(gameStatus.code == GAME_WIN) {
+				printf("You Win :)\n");
+			}
+			else{
+				printStatus(&gameStatus, DEBUG_CLIENT);
+			}
 		}
+		
+		// Bucle jugador activo
 		while(gameStatus.code == TURN_PLAY) {
 			playerMove = readOption();
 			allocClearBlock(&soap, &gameStatus);
 			soap_call_blackJackns__playerMove(&soap, serverURL, "", playerName, gameId, playerMove, &gameStatus);
-			printStatus(&gameStatus, DEBUG_CLIENT);
-			showCodeText(gameStatus.code);
+			if(gameStatus.code == GAME_LOSE) {
+				printf("You Lose :(\n");
+			}
+			else if(gameStatus.code == GAME_WIN) {
+				printf("You Win :)\n");
+			}
+			else {
+				printStatus(&gameStatus, DEBUG_CLIENT);
+			}
+			if (DEBUG_CLIENT) showCodeText(gameStatus.code);
 		} 
 	}
 
