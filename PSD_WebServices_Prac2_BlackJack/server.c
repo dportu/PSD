@@ -232,7 +232,19 @@ int endRound(int gameIndex) {
 			games[gameIndex].player2Stack += DEFAULT_BET;
 			games[gameIndex].player1Stack -= DEFAULT_BET;
 		}
+
+
+		// Reseteamos los decks de los jugadores
+		clearDeck(&(games[gameIndex].player1Deck));
+        clearDeck(&(games[gameIndex].player2Deck));
+        initDeck(&(games[gameIndex].gameDeck));
+
+		// Reseteamos los bets de los jugadores
+		games[gameIndex].player1Bet = FALSE;
+        games[gameIndex].player2Bet = FALSE;
+
 	}
+
 
 	games[gameIndex].currentPlayer = calculateNextPlayer(games[gameIndex].currentPlayer);
 
@@ -291,10 +303,6 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 			games[gameIndex].status = gameWaitingPlayer;
 			*result = gameIndex;
 
-			//eleccion aleatoria del primer jugador
-			setFirstPlayer(gameIndex);
-			printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player2Name : games[gameIndex].player1Name);
-
 			pthread_cond_wait(&games[gameIndex].registerCond, &games[gameIndex].registerMutex); // pthread_cond_wait para el primer jugador hasta que se registre el segundo
 		}
 		else {
@@ -305,6 +313,10 @@ int blackJackns__register (struct soap *soap, blackJackns__tMessage playerName, 
 				strcpy(games[gameIndex].player2Name, playerName.msg);
 				games[gameIndex].status = gameReady;
 				*result = gameIndex;
+
+				//eleccion aleatoria del primer jugador
+				setFirstPlayer(gameIndex);
+				printf("El primer turno es para %s\n", games[gameIndex].currentPlayer ? games[gameIndex].player2Name : games[gameIndex].player1Name);
 
 				pthread_cond_signal(&games[gameIndex].registerCond); // Despierta al jugador 1
 			}
@@ -346,7 +358,6 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 	if( ((strcmp(playerName.msg, games[gameIndex].player1Name) == 0) && (games[gameIndex].currentPlayer != player1)) ||
     	((strcmp(playerName.msg, games[gameIndex].player2Name) == 0) && (games[gameIndex].currentPlayer != player2)) ) {
 			printf("%s is waiting...\n", playerName.msg);
-
 			pthread_cond_wait(&games[gameIndex].statusCond, &games[gameIndex].statusMutex);
 			printf("%s woke up...\n", playerName.msg);
 		}
@@ -391,6 +402,7 @@ int blackJackns__getStatus(struct soap *soap, blackJackns__tMessage playerName, 
 				sprintf(replyMessage, "You Lose :(\n");
 			}
 			
+			initGame(&games[gameIndex]); // reseteamos el game ??
 			copyGameStatusStructure(gameStatus, replyMessage, activePlayerDeck, resultCode);
 		}
 		// El jugador pasa a ser el activo

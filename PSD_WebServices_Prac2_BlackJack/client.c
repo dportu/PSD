@@ -100,7 +100,7 @@ int main(int argc, char **argv){
 	gameId = resCode;
 
 	gameStatus.code = TURN_WAIT;
-	while(gameStatus.code != GAME_LOSE || gameStatus.code != GAME_WIN) { // Todo: mientras no acabe el juego
+	while(gameStatus.code != GAME_LOSE && gameStatus.code != GAME_WIN) { // Todo: mientras no acabe el juego
 		while(gameStatus.code == TURN_WAIT) { //?
 			printf("Soy el jugador inactivo\n");
 			allocClearBlock(&soap, &gameStatus); // ?
@@ -115,9 +115,7 @@ int main(int argc, char **argv){
 			printStatus(&gameStatus, DEBUG_CLIENT);
 			showCodeText(gameStatus.code);
 		} 
-	} 
-
-
+	}
 
 	// Clean the environment
 	soap_destroy(&soap);

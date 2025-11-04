@@ -14,7 +14,7 @@
 #define INITIAL_STACK 1
 
 /** Default bet */
-#define DEFAULT_BET 1
+#define DEFAULT_BET 3
 
 /** Number of points to win the game */
 #define GOAL_GAME 21
