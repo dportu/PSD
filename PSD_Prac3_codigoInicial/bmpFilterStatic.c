@@ -123,6 +123,25 @@ int main(int argc, char** argv){
 			read (inputFile, outputBuffer, imgFileHeaderInput.bfOffBits-BIMAP_HEADERS_SIZE);
 			write (outputFile, outputBuffer, imgFileHeaderInput.bfOffBits-BIMAP_HEADERS_SIZE);
 
+			//TODO clear del outputbuffer
+			//TODO broadcast de las dimensiones de la imagen para que los workers sepan como de grande es su segmento creo
+
+
+			// Notas de Clase
+
+				// tener el mismo codigo para el worker estatico y dinamico, sencillamente implementar un flag que enviamos al worker cuando haya terminado
+
+				//recepcion de las rows de los workers
+				for(int i = 0; i < num_workers; i++){
+					MPI_recv(&n,     , MPI_ANY_SOURCE, &status); //recv del id de cualquier worker
+					aux = ;//colocamos el puntero del outputbuffer en el segmento del worker
+					MPI_recv( MPI_SOURCE) // recibimos el segmento del worker
+				}
+
+			// Notas de Clase
+
+			//algo asi
+			inputBuffer = (unsigned char*) malloc(rowSize * imageDimensions[1]); 
 			
 			
 			// Todo

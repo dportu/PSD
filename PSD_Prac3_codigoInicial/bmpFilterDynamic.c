@@ -133,7 +133,15 @@ int main(int argc, char** argv){
 
 			
 			// Todo
-			
+
+			// Notas de Clase
+
+				//TODO clear del outputbuffer
+				//TODO broadcast de las dimensiones de la imagen para que los workers sepan como de grande es su segmento creo
+				// tener el mismo codigo para el worker estatico y dinamico, sencillamente implementar un flag que enviamos al worker cuando haya terminado
+
+
+			// Notas de Clase
 
 			// Close files
 			close (inputFile);
