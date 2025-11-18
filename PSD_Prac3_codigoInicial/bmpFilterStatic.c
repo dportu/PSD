@@ -1,4 +1,5 @@
 #include "bmpBlackWhite.h"
+#include <time.h>
 #include "mpi.h"
 
 /** Show log messages */
@@ -38,7 +39,9 @@ int main(int argc, char** argv){
 	tPixelVector vector;							/** Vector of neighbour pixels */
 	int imageDimensions[2];							/** Dimensions of input image */
 	double timeStart, timeEnd;						/** Time stamps to calculate the filtering time */
-	int size, rank, tag;							/** Number of process, rank and tag */
+	int size, rank;									/** Number of process and rank*/
+	int  tag;										// preguntar: lo usamos para enviarle a cada worker su fila ?
+	int num_workers;								//	Number of workers = size - 1
 	MPI_Status status;								/** Status information for received messages */
 
 
@@ -48,6 +51,7 @@ int main(int argc, char** argv){
 		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 		tag = 1;
 		srand(time(NULL));
+		
 
 		// Check the number of processes
 		if (size<=2){
@@ -75,8 +79,7 @@ int main(int argc, char** argv){
 		threshold = atoi(argv[3]);
 
 
-		// Inicializamos variables
-		rowsPerProcess = imageDimensions[1] / (size - 1); // asumimos que es divisible
+		
 
 
 		// Master process
@@ -123,39 +126,43 @@ int main(int argc, char** argv){
 			read (inputFile, outputBuffer, imgFileHeaderInput.bfOffBits-BIMAP_HEADERS_SIZE);
 			write (outputFile, outputBuffer, imgFileHeaderInput.bfOffBits-BIMAP_HEADERS_SIZE);
 
-			//TODO clear del outputbuffer
-			//TODO broadcast de las dimensiones de la imagen para que los workers sepan como de grande es su segmento creo
+			free(outputBuffer);
 
+			// INICIALIZACION VARIABLES
+			imageDimensions[0] = abs(imgInfoHeaderInput.biWidth);
+			imageDimensions[1] = abs(imgInfoHeaderInput.biHeight);
+			num_workers = size - 1;
+			rowsPerProcess = imageDimensions[1] / num_workers; // TODO: estamos asumimiendo que es divisible
+			outputBuffer = (unsigned char*) malloc (rowSize * imageDimensions[1]);
+			inputBuffer = (unsigned char*) malloc(rowSize * imageDimensions[1]);
+			read(inputFile, inputBuffer, rowSize * imageDimensions[1]); // inicializamos el inputbuffer con la imagen sin filtrar
+			
+			//	Broadcast de las dimensiones de la imagen
+			MPI_Bcast(&imageDimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
 
-			// Notas de Clase
-
-				// tener el mismo codigo para el worker estatico y dinamico, sencillamente implementar un flag que enviamos al worker cuando haya terminado
-
-				//recepcion de las rows de los workers
-				for(int i = 0; i < num_workers; i++){
-					MPI_recv(&n,     , MPI_ANY_SOURCE, &status); //recv del id de cualquier worker
-					aux = ;//colocamos el puntero del outputbuffer en el segmento del worker
-					MPI_recv( MPI_SOURCE) // recibimos el segmento del worker
-				}
-
-			// Notas de Clase
-
-			//algo asi
-			inputBuffer = (unsigned char*) malloc(rowSize * imageDimensions[1]); 
 			
 			
-			// Todo
-			for(int i = 0; i < size; i++) {
-				auxPtr = inputbuffer[i * rowsPerProcess]; // poner donde toque
+			
+			// 		ENVIO A WORKERS
+			for(int i = 0; i < num_workers; i++) {
+				auxPtr = &inputBuffer[i * rowsPerProcess]; // poner donde toque
 				MPI_Send(auxPtr, rowSize * rowsPerProcess, MPI_CHAR, i + 1, tag, MPI_COMM_WORLD); // enviamos a cada worker su parte de la imagen
 			} 
 			
-			// TODO Desecuencializar el recibo
-			// Como sabemos quien esta enviando y donde poner el puntero antes de hacer el receive ??
-			for(int i = 0; i < size; i++) {
-				auxPtr = outputBuffer[i * rowsPerProcess]; // poner donde toque
-				MPI_Recv(auxPtr, rowSize * rowsPerProcess, MPI_CHAR, idk, tag, MPI_COMM_WORLD, &status); // recibimos de cada worker su parte de la imagen procesada
+
+			//		RECEPCION DE WORKERS
+			for(int i = 0; i < num_workers; i++){
+				int id;
+				MPI_Recv(&id, 1, MPI_CHAR , MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &status); //recv del id de cualquier worker
+				auxPtr = &outputBuffer[id * rowsPerProcess];//colocamos el puntero del outputbuffer en el segmento del worker
+				MPI_Recv(auxPtr, rowsPerProcess, rowSize * rowsPerProcess, id, tag, MPI_COMM_WORLD, &status); // recibimos el segmento del worker
 			}
+
+			//	Escritura del outputbuffer en el output file
+			write(outputFile, outputBuffer, imageDimensions[1] * rowSize);
+
+
+
 
 			// Close files
 			close (inputFile);
@@ -171,11 +178,11 @@ int main(int argc, char** argv){
 
 		// Worker process
 		else{
+			
+			// RECIBE LAS DIMENSIONES DE LA IMAGEN
+			// MPI_Send(&imageDimensions, rowSize * rowsPerProcess, MPI_CHAR, i + 1, tag, MPI_COMM_WORLD);
 
-			// Todo
-			
-			
-			
+			// RECIBE LAS 
 			
 			
 			
