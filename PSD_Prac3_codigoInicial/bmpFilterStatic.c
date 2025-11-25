@@ -42,6 +42,8 @@ int main(int argc, char** argv){
 	int size, rank;									/** Number of process and rank*/
 	int  tag;										// preguntar: lo usamos para enviarle a cada worker su fila ?
 	int num_workers;								//	Number of workers = size - 1
+	unsigned int grain;										// size del trabajo a realizar
+	int leftover;									// numero de workers que tienen que procesar una fila mas por no ser el numero de rows divisible
 	MPI_Status status;								/** Status information for received messages */
 
 
@@ -96,7 +98,7 @@ int main(int argc, char** argv){
 			writeHeaders (destinationFileName, &imgFileHeaderOutput, &imgInfoHeaderOutput);
 
 			// Calculate row size for input and output images
-			rowSize = (((imgInfoHeaderInput.biBitCount * imgInfoHeaderInput.biWidth) + 31) / 32 ) * 4;
+			rowSize = (((imgInfoHeaderInput.biBitCount * abs(imgInfoHeaderInput.biWidth)) + 31) / 32 ) * 4;
 		
 			// Show headers...
 			if (SHOW_BMP_HEADERS){
@@ -132,31 +134,61 @@ int main(int argc, char** argv){
 			imageDimensions[0] = abs(imgInfoHeaderInput.biWidth);
 			imageDimensions[1] = abs(imgInfoHeaderInput.biHeight);
 			num_workers = size - 1;
-			rowsPerProcess = imageDimensions[1] / num_workers; // TODO: estamos asumimiendo que es divisible
+			rowsPerProcess = imageDimensions[1] / num_workers;
+			leftover =  imageDimensions[1] % num_workers;
+			printf("malloc del master\n");
 			outputBuffer = (unsigned char*) malloc (rowSize * imageDimensions[1]);
 			inputBuffer = (unsigned char*) malloc(rowSize * imageDimensions[1]);
+			rowsSentToWorker = rowsPerProcess;
 			read(inputFile, inputBuffer, rowSize * imageDimensions[1]); // inicializamos el inputbuffer con la imagen sin filtrar
 			
+			printf("imageDimensions[0] (width): %d\n", imageDimensions[0]);
+			printf("imageDimensions[1] (height): %d\n", imageDimensions[1]);
+
+			printf("num_workers: %d\n", num_workers);
+			printf("rowsPerProcess: %d\n", rowsPerProcess);
+			printf("leftover: %d\n", leftover);
+
+			printf("rowSize: %d\n", rowSize);
+			printf("outputBuffer addr: %p\n", (void*)outputBuffer);
+			printf("inputBuffer addr: %p\n", (void*)inputBuffer);
+
+
+
 			//	Broadcast de las dimensiones de la imagen
-			MPI_Bcast(&imageDimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
+			MPI_Bcast(imageDimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
 
 			
 			
 			
 			// 		ENVIO A WORKERS
+			// TOASK: se podria enviar auxPtr o sentRows, para que el worker pueda luego hacer un send al master directamente de donde tiene que escribir lo que le envia?
+			
 			for(int i = 0; i < num_workers; i++) {
-				auxPtr = &inputBuffer[i * rowsPerProcess]; // poner donde toque
-				MPI_Send(auxPtr, rowSize * rowsPerProcess, MPI_CHAR, i + 1, tag, MPI_COMM_WORLD); // enviamos a cada worker su parte de la imagen
-			} 
+
+				
+				// Enviamos el numero de columnas que tiene que procesar
+				MPI_Send(&rowsSentToWorker, 1, MPI_INT, i + 1, tag, MPI_COMM_WORLD); 
+				auxPtr = &inputBuffer[i * rowsPerProcess]; 
+				if(i == num_workers - 1) {
+					rowsSentToWorker += leftover; 
+				}
+				printf("Enviando a worker %d, con grain %d\n", i + 1, rowsSentToWorker);
+				MPI_Send(auxPtr, rowsSentToWorker * rowSize, MPI_CHAR, i + 1, tag, MPI_COMM_WORLD); // enviamos a cada worker su parte de la imagen
+				printf("%d filas * %d rowsize = %d bytes enviados al worker %d\n", rowsSentToWorker, rowSize, rowsSentToWorker * rowSize, i + 1);
+			}
+			
+
 			
 
 			//		RECEPCION DE WORKERS
-			for(int i = 0; i < num_workers; i++){
-				int id;
-				MPI_Recv(&id, 1, MPI_CHAR , MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &status); //recv del id de cualquier worker
-				auxPtr = &outputBuffer[id * rowsPerProcess];//colocamos el puntero del outputbuffer en el segmento del worker
-				MPI_Recv(auxPtr, rowsPerProcess, rowSize * rowsPerProcess, id, tag, MPI_COMM_WORLD, &status); // recibimos el segmento del worker
-			}
+			for(int i = 0; i < num_workers; i++) {
+				int procesedRows = 0;
+				MPI_Recv(&procesedRows, 1, MPI_INT , MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &status); //recv del id de cualquier worker y el numero de rows que ha procesado
+				int id = status.MPI_SOURCE; //asumimos que status.MPI_SOURCE es el rank
+				auxPtr = &outputBuffer[id * rowsPerProcess];
+				MPI_Recv(auxPtr, procesedRows * rowSize, MPI_CHAR, id, tag, MPI_COMM_WORLD, &status); // recibimos el segmento del worker
+			}									//rowSize * rowsPerProcess
 
 			//	Escritura del outputbuffer en el output file
 			write(outputFile, outputBuffer, imageDimensions[1] * rowSize);
@@ -180,12 +212,69 @@ int main(int argc, char** argv){
 		else{
 			
 			// RECIBE LAS DIMENSIONES DE LA IMAGEN
-			// MPI_Send(&imageDimensions, rowSize * rowsPerProcess, MPI_CHAR, i + 1, tag, MPI_COMM_WORLD);
+			MPI_Bcast(imageDimensions, 2, MPI_INT, 0, MPI_COMM_WORLD);
+			printf("Worker %d ha recibido dimensiones: %dx%d\n",rank, imageDimensions[0],imageDimensions[1]);
 
-			// RECIBE LAS 
+
+
+			// RECIBIMOS GRAIN
+			MPI_Recv(&grain, 1, MPI_INT, 0, tag, MPI_COMM_WORLD, &status);
 			
-			
-			
+			printf("malloc del worker %d\n", rank);
+			unsigned char *workerInputBuffer = (unsigned char*) malloc(grain * rowSize);
+			unsigned char *workerOutputBuffer = (unsigned char*) malloc(grain * rowSize);
+
+			while(grain != 0) { // grain = 0 : finalizacion del worker
+				//	Recibimos el trabajo inicial
+				MPI_Recv(workerInputBuffer, grain * rowSize, MPI_CHAR, 0, tag, MPI_COMM_WORLD, &status);
+
+				//	PROCESADO
+				
+				// For each row...
+				for (currentRow = 0; currentRow < imageDimensions[1]; currentRow++){
+					printf ("Reading row %d / %d\n", currentRow, imageDimensions[1]);
+					// For each pixel in the current row...
+					for (currentPixel = 0; currentPixel < rowSize; currentPixel++){
+						
+						// Current pixel
+						numPixels = 0;
+						vector[numPixels] = workerInputBuffer[currentPixel];
+						numPixels++;
+						
+						// Not the first pixel
+						if (currentPixel > 0){
+							vector[numPixels] = workerInputBuffer[currentPixel-1];
+							numPixels++;
+						}
+						
+						// Not the last pixel
+						if (currentPixel < (imageDimensions[0]-1)){
+							vector[numPixels] = workerInputBuffer[currentPixel+1];
+							numPixels++;
+						}
+						
+						// Store current pixel value
+						workerOutputBuffer[currentPixel] = calculatePixelValue(vector, numPixels, threshold, DEBUG_FILTERING);
+					}
+					
+					// Write to output file
+					if ((writeBytes = write (outputFile, outputBuffer, rowSize)) != rowSize){
+						showError ("Error while writing to destination file");
+					}
+					
+				}
+
+				//	ENVIO A MASTER
+
+				// enviamos el grain
+				MPI_Send(&grain, 1, MPI_INT, 0, tag, MPI_COMM_WORLD);
+				// enviamos las rows procesadas 
+				MPI_Send(workerOutputBuffer, grain * rowSize, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
+
+
+				// recibimos el grain de nuevo
+				MPI_Recv(&grain, 1, MPI_INT, 0, tag, MPI_COMM_WORLD, &status);
+			}
 		}
 
 		// Finish MPI environment
