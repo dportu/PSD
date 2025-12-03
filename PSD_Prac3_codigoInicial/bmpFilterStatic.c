@@ -1,4 +1,4 @@
-//	mpiexec -hostfile machines -np 3 ./bmpFilterStatic ejemplo1.bmp salida.bmp 1
+//	mpiexec -hostfile machines -np 3 ./bmpFilterStatic ejemplo1.bmp salida.bmp 50
 
 #include "bmpBlackWhite.h"
 #include <time.h>
